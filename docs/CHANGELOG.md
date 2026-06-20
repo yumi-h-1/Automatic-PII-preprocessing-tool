@@ -11,7 +11,7 @@ Branches `dev/refactor-cleancode` + `feat/hf-spaces-demo`, merged to `main`.
 - Packaged via `pyproject.toml` as the single dependency source (removed `requirements.txt`).
 - CI (`.github/workflows/ci.yml`) runs `ruff` + `pytest` on every push/PR; added logging.
 - Streamlit demo moved to repo root (`streamlit_app.py`); `run_eval.py` moved under `tests/`.
-- Hugging Face Spaces (Docker SDK) deploy: `Dockerfile`, README front-matter, `DEPLOY_HF_SPACES.md`.
+- Hugging Face Spaces (Docker SDK) deploy: `Dockerfile`, README front-matter, `docs/DEPLOY_HF_SPACES.md`.
 - Decluttered Claude tooling (eval skill, post-edit hook, local settings) and the root changelog.
 
 ## Post-PR #3 hardening — 2026-06-20

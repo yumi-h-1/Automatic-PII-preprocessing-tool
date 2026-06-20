@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(python -m pytest*)",
+      "Bash(python -m src.*)",
+      "Bash(python --version)",
+      "Bash(pip list)",
+      "Bash(pip show*)",
+      "Bash(pip --version)"
+    ],
+    "deny": [
+      "Bash(git push*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf*)",
+      "Bash(rm -r*)",
+      "Write(data/raw/**)",
+      "Edit(data/raw/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/post_edit_check.py"
+          }
+        ]
+      }
+    ]
+  }
+}

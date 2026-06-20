@@ -1,0 +1,14 @@
+# NHS PHI safety: raw data, de-identified output, and the re-identification vault NEVER leave the repo
+data/raw/
+data/out/
+*.vault.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Claude personal overrides
+.claude/settings.local.json

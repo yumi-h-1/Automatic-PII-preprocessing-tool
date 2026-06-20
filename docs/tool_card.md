@@ -51,7 +51,7 @@ NoteGuard is a **de-identification gate** for free-text NHS clinical notes. It d
 
 ---
 
-## Performance (honest baseline — roster OFF, `en_core_web_lg`)
+## Performance (`en_core_web_lg`)
 
 | Entity | Recall |
 |---|---|
@@ -93,7 +93,6 @@ This matches the real NHS Information Governance workflow and makes the tool's a
 - **Precision is a conservative lower bound**: clinician names and unlisted locations correctly detected count as false positives in the evaluation (ground truth is patient-table-only).
 - **Not clinically validated**: evaluated on the `NHSEDataScience/synthetic_clinical_notes` dataset. Real deployment requires validation on representative Trust data.
 - **Clinical transformer models** (e.g. `obi/deid_roberta_i2b2`) were tested and performed worse on UK names than `en_core_web_lg` (i2b2 training data is US-centric). See `experiments/FAILED.md`.
-- **Roster / gazetteer** gives a recall lift but is seeded from known patient values — kept out of the headline metric to avoid circularity. Available as `--roster` option.
 
 ---
 

@@ -9,7 +9,7 @@ data leaves a Trust. Encode Club "Trusted Data & AI Infrastructure" hackathon; f
 python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt; python -m spacy download en_core_web_lg
 
-python run_eval.py --compare --limit 300   # VERIFIABLE SIGNAL: rules vs presidio+rules vs +roster -> results.json
+python run_eval.py --compare --limit 300   # VERIFIABLE SIGNAL: rules vs presidio+rules -> results.json
 python -m noteguard.trust_demo             # two NHS Trusts share only de-identified data -> data/out/
 streamlit run app/streamlit_app.py         # demo (Try-it / Metrics / Governance / Two-Trust)
 python -m pytest tests/ -v
@@ -19,7 +19,7 @@ python -m pytest tests/ -v
 
 ## Architecture
 - `noteguard/` — `data` (load + ground-truth join, EVAL-ONLY oracle) · `recognizers` (pure-Python
-  rules) · `detect` (Rule / Presidio / Gazetteer / Composite, graceful fallback) · `transform`
+  rules) · `detect` (Rule / Presidio, graceful fallback) · `transform`
   (redact | patient-consistent pseudonymise + date-shift, Faker) · `evaluate` (P/R/F1 + residual
   leakage) · `pipeline` · `trust_demo`.
 - `run_eval.py` CLI · `app/streamlit_app.py` demo · `tests/` mirror `noteguard/`.
@@ -33,15 +33,11 @@ python -m pytest tests/ -v
   into prompts; point at file paths.
 - The note→patient join (`noteguard/data.py` ground truth) is the EVAL-ONLY oracle. It must NEVER feed
   detection/transform — that is data leakage and invalidates the metric.
-- The roster/gazetteer is seeded from known values, so keep it OUT of the headline metric — report it
-  only as an optional recall-lift layer.
 - Never silently fall back to an older/cached dataset — fail loudly.
 
 ## Decisions locked in (version 1 branch)
 - **Default model: `en_core_web_lg`** — 100% name recall vs 91% for sm; clinical transformer
   (`obi/deid_roberta_i2b2`) was tested and performed worse on UK names (US i2b2 training data).
-- **Roster OFF by default** — `--roster` flag available to show the recall lift separately;
-  not the headline metric because the gazetteer is seeded from the same known values.
 - **ORGANIZATION added to PresidioDetector.KEEP** — hospital names are often tagged as ORG;
   excluding them was the root cause of low places recall.
 - **Human-in-the-loop review queue** — spans with score in `[review_threshold, score_threshold)`

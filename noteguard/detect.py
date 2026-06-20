@@ -8,8 +8,7 @@ are unavailable.
 """
 from __future__ import annotations
 
-import re
-from typing import Iterable, Protocol
+from typing import Protocol
 
 from .recognizers import Span, find_rule_spans
 
@@ -112,48 +111,6 @@ class PresidioDetector:
                          needs_review=True)
                 )
         spans += find_rule_spans(text)  # rule-based detections are always confident
-        return _merge(spans)
-
-
-class GazetteerDetector:
-    """Match a known list of names/sites (the roster a trust actually holds).
-
-    Catches identifiers the NER model misses (rare names, typo'd surnames) using
-    whole-word, case-insensitive matching. Used as an optional layer to show the
-    recall lift — not part of the headline eval, to avoid circularity.
-    """
-
-    name = "gazetteer"
-
-    def __init__(self, terms: Iterable[tuple[str, str]], min_len: int = 3):
-        self._patterns: list[tuple[re.Pattern, str]] = []
-        seen: set[str] = set()
-        for term, etype in terms:
-            term = (term or "").strip()
-            if len(term) < min_len or term.lower() in seen:
-                continue
-            seen.add(term.lower())
-            self._patterns.append(
-                (re.compile(rf"\b{re.escape(term)}\b", re.IGNORECASE), etype)
-            )
-
-    def detect(self, text: str) -> list[Span]:
-        spans: list[Span] = []
-        for pat, etype in self._patterns:
-            for m in pat.finditer(text):
-                spans.append(Span(m.start(), m.end(), etype, m.group(), 0.9))
-        return spans
-
-
-class CompositeDetector:
-    def __init__(self, *detectors: Detector):
-        self.detectors = detectors
-        self.name = "+".join(getattr(d, "name", "?") for d in detectors)
-
-    def detect(self, text: str) -> list[Span]:
-        spans: list[Span] = []
-        for d in self.detectors:
-            spans += d.detect(text)
         return _merge(spans)
 
 

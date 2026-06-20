@@ -27,8 +27,8 @@ layer** Presidio leaves to you:
 3. **Patient-consistent, longitudinal de-identification.** Same patient → same surrogate across their
    whole admission journey, with each patient's dates shifted by one consistent offset so clinical
    intervals survive — *useful* data, not just safe data. Realistic en_GB fakes (or `[TYPE]` redaction).
-4. **Pluggable + degrades gracefully.** One `Detector` interface (Rule / Presidio / Gazetteer /
-   Composite); the pure-Python rule layer + eval run even if spaCy/Presidio are unavailable.
+4. **Pluggable + degrades gracefully.** One `Detector` interface (Rule / Presidio); the pure-Python
+   rule layer + eval run even if spaCy/Presidio are unavailable.
 5. **Governance wrapper.** Per-note audit of what was removed + the dataset-level leakage report,
    mapped to the NHS **Five Safes**.
 
@@ -41,20 +41,18 @@ layer** Presidio leaves to you:
 |---|---|---|---|
 | rules only | 0.98 | 0.00 | **74.8 %** |
 | **presidio + rules** (shipping) | **0.99** | **0.68** | **8.5 %** |
-| presidio + rules + Trust roster | 0.99 | 0.73 | **0.10 %** (1 / 1027) |
 
-The rules→engine→roster drop is the headline: it shows, with numbers, exactly what each layer buys you.
+The rules→engine drop is the headline: it shows, with numbers, exactly what the NER engine buys you.
 
 > Precision is reported against *structured* PII only, so it is a conservative lower bound — correctly
 > removing a clinician's name (not in the tables) counts here as a false positive. **Recall and leakage
-> are the sound, headline metrics.** The roster/gazetteer is seeded from a Trust's known patient list,
-> so it's reported as an optional recall-lift layer, kept out of the headline to avoid circularity.
+> are the sound, headline metrics.**
 
 ## Architecture
 
 ```
                  ┌──────────────────── inside Trust A ─────────────────────┐
- raw notes ──►   │  fix mojibake ─► detect (Presidio NER + rules +roster)   │ ──► de-identified
+ raw notes ──►   │  fix mojibake ─► detect (Presidio NER + rules)           │ ──► de-identified
  (PHI)           │                  ─► transform (redact | pseudonymise)    │     text + audit log
                  │                     patient-consistent + date-shift, vault│     (no PHI leaves)
                  └─────────────────────────────────────────────────────────┘
@@ -65,7 +63,7 @@ The rules→engine→roster drop is the headline: it shows, with numbers, exactl
 
 `noteguard/` — `data` (load + ground-truth join, **eval-only oracle**) · `recognizers` (pure-Python
 rules: NHS checksum/context, postcode, date, phone, email, GMC/NMC/ODS, UUID) · `detect`
-(`RuleDetector` / `PresidioDetector` / `GazetteerDetector` / `CompositeDetector`) · `transform`
+(`RuleDetector` / `PresidioDetector`) · `transform`
 (redaction | patient-consistent pseudonymisation + date-shift, Faker vault) · `evaluate` (P/R/F1 +
 residual leakage) · `pipeline` · `trust_demo`.
 

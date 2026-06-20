@@ -16,11 +16,9 @@ The eval is the project's pass/fail signal — it proves sanitisation actually r
    - **residual leakage** = known identifiers still present after sanitisation. This is the headline.
 
 ## How to read it
-- `--compare` prints three rows: **rules** → **presidio+rules** (the shipping detector) →
-  **presidio+rules+roster** (optional gazetteer). The leakage should drop sharply across them.
+- `--compare` prints two rows: **rules** → **presidio+rules** (the shipping detector). The leakage
+  should drop sharply between them.
 - Watch residual leakage as the headline. If it regresses after a change to `noteguard/recognizers.py`,
   `detect.py`, or `transform.py`, fix it before continuing.
-- Keep the roster/gazetteer OUT of the headline claim — it's seeded from known values, so it's an
-  optional recall-lift layer, reported separately.
 
 Log anything that didn't work in `experiments/FAILED.md`.

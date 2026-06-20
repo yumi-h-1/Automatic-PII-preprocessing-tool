@@ -210,26 +210,6 @@ def load_notes(limit: int | None = None, local_dir: str | None = None) -> list[N
     return records
 
 
-def roster_terms(records: list[NoteRecord]) -> list[tuple[str, str]]:
-    """Build (term, entity_type) pairs for a GazetteerDetector from notes' ground truth.
-
-    This is the patient/site roster a Trust legitimately holds. Used as an OPTIONAL
-    recall-lift layer (and by the two-Trust demo) — kept out of the headline eval to
-    avoid circularity, since the gazetteer is seeded from the same known values.
-    """
-    terms: dict[str, str] = {}
-    for rec in records:
-        for gt in rec.ground_truth:
-            if gt.entity_type not in ("PERSON", "LOCATION"):
-                continue
-            terms.setdefault(gt.text, gt.entity_type)
-            if gt.entity_type == "PERSON":
-                for tok in gt.text.replace(",", " ").split():
-                    if len(tok) >= 3:
-                        terms.setdefault(tok, "PERSON")
-    return list(terms.items())
-
-
 if __name__ == "__main__":
     recs = load_notes(limit=5)
     for rec in recs:

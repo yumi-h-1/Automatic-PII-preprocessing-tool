@@ -18,8 +18,8 @@ import streamlit as st
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from noteguard.data import load_notes, roster_terms  # noqa: E402
-from noteguard.detect import CompositeDetector, GazetteerDetector, build_detector  # noqa: E402
+from noteguard.data import load_notes  # noqa: E402
+from noteguard.detect import build_detector  # noqa: E402
 from noteguard.evaluate import evaluate  # noqa: E402
 from noteguard.pipeline import Pipeline  # noqa: E402
 from noteguard.transform import PSEUDONYM, REDACTION, PseudonymVault  # noqa: E402
@@ -89,7 +89,6 @@ st.caption(
 )
 
 detector, NOTES = load_engine()
-ROSTER = roster_terms(NOTES) if NOTES else []
 
 tab_try, tab_metrics, tab_gov, tab_trust = st.tabs(
     ["🔎 Try it", "📊 Metrics & leakage", "🏛️ Governance (Five Safes)", "🤝 Two-Trust sharing"]
@@ -106,7 +105,6 @@ with tab_try:
         method = st.radio("Transform", [PSEUDONYM, REDACTION],
                           format_func=lambda m: "Pseudonymise (realistic, patient-consistent)"
                           if m == PSEUDONYM else "Redact ([TYPE] tags)")
-        use_roster = st.checkbox("Add Trust roster (gazetteer) — catches names NER misses", value=False)
         source = st.radio("Input", ["Sample note", "Paste your own"])
     with c1:
         if source == "Sample note" and NOTES:
@@ -121,8 +119,7 @@ with tab_try:
             person_id = "demo"
 
     if text.strip():
-        det = CompositeDetector(detector, GazetteerDetector(ROSTER)) if (use_roster and ROSTER) else detector
-        result = Pipeline(det, PseudonymVault()).sanitise(text, method, person_id)
+        result = Pipeline(detector, PseudonymVault()).sanitise(text, method, person_id)
 
         st.markdown("##### 1) Detected PII")
         scroll_box(highlight(text, result.spans))
@@ -198,7 +195,7 @@ with tab_metrics:
             hide_index=True, use_container_width=True,
         )
         st.caption(
-            f"Detector: `{name}` · model: `en_core_web_lg` · roster: OFF (honest generalisation). "
+            f"Detector: `{name}` · model: `en_core_web_lg` (honest generalisation). "
             "Precision is a conservative lower bound — clinician names and unlisted locations "
             "detected correctly are counted as false positives."
         )

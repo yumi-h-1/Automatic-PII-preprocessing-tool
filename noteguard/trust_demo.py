@@ -1,7 +1,7 @@
 """Simulate two NHS Trusts collaborating without sharing sensitive data.
 
-Each Trust holds its own patients, its own roster (gazetteer), and its own
-re-identification vault. It sanitises its notes LOCALLY and contributes only the
+Each Trust holds its own patients and its own re-identification vault. It
+sanitises its notes LOCALLY and contributes only the
 de-identified text + a content-free audit manifest to a shared pool. Raw notes and
 vaults never leave the Trust. This is the sanitise-at-source gate that sits in
 front of a federated SDE / FLock.io training round.
@@ -16,8 +16,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from .data import NoteRecord, load_notes, roster_terms
-from .detect import CompositeDetector, GazetteerDetector, build_detector
+from .data import NoteRecord, load_notes
+from .detect import build_detector
 from .evaluate import ground_truth_spans, value_variants, _find_all
 from .pipeline import Pipeline
 from .transform import PSEUDONYM, PseudonymVault
@@ -43,9 +43,7 @@ def _residual_leaks(rec: NoteRecord, sanitised: str) -> tuple[int, int]:
 
 def _run_trust(trust_id: int, records: list[NoteRecord], method: str, base_detector) -> dict:
     """Sanitise one Trust's notes locally; return a shareable manifest + de-identified records."""
-    # Trust-local roster gazetteer layered on the shared detection engine.
-    detector = CompositeDetector(base_detector, GazetteerDetector(roster_terms(records)))
-    pipeline = Pipeline(detector=detector, vault=PseudonymVault())  # vault stays local
+    pipeline = Pipeline(detector=base_detector, vault=PseudonymVault())  # vault stays local
 
     entity_counts: Counter = Counter()
     deidentified: list[dict] = []

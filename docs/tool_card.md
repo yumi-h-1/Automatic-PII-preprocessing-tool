@@ -1,6 +1,6 @@
 # NoteGuard — Tool Card
 
-**Version:** 1.0 (dev)  
+**Version:** 0.0.1  
 **Track:** Public Sector & Citizen Services — NHS Secure Data Environment on-ramp  
 **Status:** Hackathon prototype; not validated for production use without further evaluation.
 

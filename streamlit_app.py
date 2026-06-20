@@ -1,6 +1,6 @@
 """NoteGuard — demo UI.
 
-Run from the repo root:  streamlit run app/streamlit_app.py
+Run from the repo root:  streamlit run streamlit_app.py
 
 Try-it (detect & sanitise) · Metrics & leakage · Governance (Five Safes) · Two-Trust sharing.
 Built on the NoteGuard package (src/) — pluggable detectors + patient-consistent transforms.

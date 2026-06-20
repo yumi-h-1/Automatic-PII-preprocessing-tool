@@ -46,7 +46,7 @@ python -m pytest tests/ -v
 - **Human-in-the-loop review queue** — spans with score in `[review_threshold, score_threshold)`
   are redacted but flagged `needs_review=True` for IG analyst review before SDE pool admission.
 - **Places recall** — low recall (0–0.7) was mostly generic "ward"/"bay" in GT (now filtered by
-  `_GENERIC`); NHS site names are caught by the `_SITE_RE` LOCATION rule in recognizers.
+  `_GENERIC`); NHS site names are caught by the `_SITE_RE` LOCATION rule in recognisers.
 
 ## Gotchas
 - Note text has mojibake (`Â·`) — `_fix_mojibake` runs before detection.

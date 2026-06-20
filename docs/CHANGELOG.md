@@ -3,7 +3,7 @@
 Big changes since the fork of [`NoteGuard/Automatic-PII-preprocessing-tool`](https://github.com/NoteGuard/Automatic-PII-preprocessing-tool),
 grouped by pull request / milestone (newest first). Encode Club "Trusted Data & AI Infrastructure" hackathon.
 
-## Gold-RAP restructure & Hugging Face deploy — 2026-06-20
+## [0.0.1] — 2026-06-20 — first release (Gold-RAP restructure & Hugging Face deploy)
 Branches `dev/refactor-cleancode` + `feat/hf-spaces-demo`, merged to `main`.
 - Reorganised to a Gold-RAP "analysis as a product" layout: `src/` package, `tests/`, `docs/`,
   `data/` (inputs), `outputs/` (generated artifacts).

@@ -23,6 +23,8 @@ GMC = "GMC"              # General Medical Council number (UK doctors)
 NMC = "NMC"              # Nursing & Midwifery Council PIN
 NHS_ODS = "NHS_ODS"      # NHS Organisation Data Service codes (GP practices, trusts)
 RECORD_ID = "RECORD_ID"  # record/document UUIDs that act as quasi-identifiers
+UK_NINO = "UK_NINO"                    # National Insurance Number
+UK_VEHICLE_REGISTRATION = "UK_VEHICLE_REGISTRATION"  # current-format UK plate
 
 
 @dataclass(frozen=True)
@@ -50,12 +52,13 @@ def nhs_number_is_valid(digits: str) -> bool:
 
 
 # Real NHS numbers are 10 digits with a mod-11 check digit, optionally grouped.
-_NHS_RE = re.compile(r"\b\d{3}[ -]?\d{3}[ -]?\d{4}\b")
+# Dataset writes them with space, comma, or hyphen separators (e.g. 272,733,208).
+_NHS_RE = re.compile(r"\b\d{3}[ ,\-]?\d{3}[ ,\-]?\d{4}\b")
 # Context-anchored: an "NHS ..." label followed by a 9-10 digit number. Needed
 # because this synthetic dataset uses 9-digit NHS numbers (no valid checksum),
 # which neither the checksum rule nor Presidio's UK_NHS recogniser would catch.
 _NHS_CTX_RE = re.compile(
-    r"NHS\s*(?:Number|No\.?|#)?\s*[:\-]?\s*(\d{3}[ -]?\d{3}[ -]?\d{2,4})",
+    r"NHS\s*(?:Number|No\.?|#)?\s*[:\-]?\s*(\d{3}[ ,\-]?\d{3}[ ,\-]?\d{2,4})",
     re.IGNORECASE,
 )
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
@@ -76,6 +79,10 @@ _ODS_RE = re.compile(r"(?i)\b(?:ODS|practice\s*code)[:\s]*([A-Z]\d{5})\b")
 _UUID_RE = re.compile(
     r"\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b", re.IGNORECASE
 )
+# 2 letters, 6 digits in pairs, A-D suffix — specific enough to fire without context anchoring
+_NINO_RE = re.compile(r"\b[A-Z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-Da-d]\b", re.IGNORECASE)
+# Current-format UK plate: 2 letters, 2 digits, optional space, 3 letters (e.g. AB12 CDE)
+_VEHICLE_RE = re.compile(r"\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b")
 
 # (regex, entity_type, capture_group): group 0 = whole match, 1 = inner capture
 _PLAIN = [
@@ -88,6 +95,8 @@ _PLAIN = [
     (_NMC_BARE_RE, NMC, 1),
     (_ODS_RE, NHS_ODS, 1),
     (_UUID_RE, RECORD_ID, 1),
+    (_NINO_RE, UK_NINO, 0),
+    (_VEHICLE_RE, UK_VEHICLE_REGISTRATION, 0),
 ]
 
 

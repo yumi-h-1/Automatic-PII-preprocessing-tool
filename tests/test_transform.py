@@ -27,6 +27,20 @@ def test_fake_nhs_number_valid_and_stable():
     assert nhs_number_is_valid(n1)
 
 
+def test_nino_surrogate_format():
+    import re
+    v = PseudonymVault()
+    nino = v.token_for("UK_NINO", "AB 12 34 56 C")
+    assert re.fullmatch(r"[A-Z]{2}\d{6}[A-D]", nino)
+
+
+def test_vehicle_surrogate_format():
+    import re
+    v = PseudonymVault()
+    reg = v.token_for("UK_VEHICLE_REGISTRATION", "AB12 CDE")
+    assert re.fullmatch(r"[A-Z]{2}\d{2} [A-Z]{3}", reg)
+
+
 def test_date_shift_preserves_interval():
     text = "seen 12/03/1981 and again 20/03/1981"
     out, _ = apply_transform(text, find_rule_spans(text), PSEUDONYM, PseudonymVault(), person_id="p1")

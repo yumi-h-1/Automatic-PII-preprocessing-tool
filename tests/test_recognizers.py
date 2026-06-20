@@ -36,3 +36,13 @@ def test_postcode_date_email_phone():
 
 def test_record_uuid():
     assert RECORD_ID in _types("note 550e8400-e29b-41d4-a716-446655440000 created")
+
+
+def test_uk_nino():
+    from noteguard.recognizers import UK_NINO
+    assert UK_NINO in _types("NI: AB 12 34 56 C")
+
+
+def test_uk_vehicle_registration():
+    from noteguard.recognizers import UK_VEHICLE_REGISTRATION
+    assert UK_VEHICLE_REGISTRATION in _types("vehicle AB12 CDE")

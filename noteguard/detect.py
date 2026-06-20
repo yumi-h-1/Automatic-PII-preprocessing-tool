@@ -39,7 +39,8 @@ class PresidioDetector:
     # Presidio entity types we keep (already aligned to our vocabulary)
     KEEP = {
         "PERSON", "DATE_TIME", "EMAIL_ADDRESS", "PHONE_NUMBER",
-        "LOCATION", "UK_NHS", "UK_NINO", "IP_ADDRESS", "URL",
+        "LOCATION", "UK_NHS", "UK_NINO", "UK_PASSPORT", "UK_VEHICLE_REGISTRATION",
+        "IP_ADDRESS", "URL",
     }
 
     def __init__(self, spacy_model: str = "en_core_web_sm", score_threshold: float = 0.4):
@@ -52,6 +53,35 @@ class PresidioDetector:
         })
         self.engine = AnalyzerEngine(nlp_engine=provider.create_engine())
         self.score_threshold = score_threshold
+        self._register_uk_recognizers()
+
+    def _register_uk_recognizers(self) -> None:
+        """Register UK entity recognizers that Presidio documents but does not ship."""
+        from presidio_analyzer import Pattern, PatternRecognizer
+
+        custom = [
+            PatternRecognizer(
+                supported_entity="UK_NINO",
+                patterns=[Pattern("UK NINO", r"\b[A-Za-z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-Da-d]\b", 0.5)],
+                context=["national insurance", "ni number", "nino"],
+                name="UkNinoRecognizer",
+            ),
+            PatternRecognizer(
+                supported_entity="UK_PASSPORT",
+                # bare 9-digit is very low confidence — only scores up when a passport context word is nearby
+                patterns=[Pattern("UK passport", r"\b\d{9}\b", 0.05)],
+                context=["passport"],
+                name="UkPassportRecognizer",
+            ),
+            PatternRecognizer(
+                supported_entity="UK_VEHICLE_REGISTRATION",
+                patterns=[Pattern("UK vehicle registration", r"\b[A-Za-z]{2}\d{2}\s?[A-Za-z]{3}\b", 0.4)],
+                context=["registration", "vehicle", "number plate", "car"],
+                name="UkVehicleRecognizer",
+            ),
+        ]
+        for rec in custom:
+            self.engine.registry.add_recognizer(rec)
 
     def detect(self, text: str) -> list[Span]:
         results = self.engine.analyze(text=text, language="en")

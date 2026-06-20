@@ -7,3 +7,7 @@ huggingface_hub
 pandas
 streamlit
 pytest
+
+# spaCy model (installed at build time on Hugging Face Spaces; matches detect.py default).
+# Swap to en_core_web_sm-3.8.0 for a faster/lighter build if the Space is resource-constrained.
+https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl

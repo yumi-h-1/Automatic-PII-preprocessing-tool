@@ -1,3 +1,15 @@
+---
+title: NoteGuard — NHS De-Identification Gate
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 8501
+pinned: false
+license: mit
+short_description: Sanitise-at-source PII removal for NHS notes
+---
+
 # 🛡️ NoteGuard
 
 **Automatic PII sanitisation for NHS clinical notes — clean data in, no identifiers out.**

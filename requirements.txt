@@ -6,5 +6,4 @@ ftfy
 huggingface_hub
 pandas
 streamlit
-gradio
 pytest

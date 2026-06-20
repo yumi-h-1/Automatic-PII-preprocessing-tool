@@ -11,8 +11,7 @@ pip install -r requirements.txt; python -m spacy download en_core_web_lg
 
 python run_eval.py --compare --limit 300   # VERIFIABLE SIGNAL: rules vs presidio+rules vs +roster -> results.json
 python -m noteguard.trust_demo             # two NHS Trusts share only de-identified data -> data/out/
-streamlit run app/streamlit_app.py         # full demo (Try-it / Metrics / Governance / Two-Trust)
-python app_gradio.py                        # lightweight Gradio demo
+streamlit run app/streamlit_app.py         # demo (Try-it / Metrics / Governance / Two-Trust)
 python -m pytest tests/ -v
 
 # Offline data: set NOTEGUARD_DATA_DIR to a folder holding the 3 CSVs (else auto-downloaded from HF).
@@ -23,7 +22,7 @@ python -m pytest tests/ -v
   rules) · `detect` (Rule / Presidio / Gazetteer / Composite, graceful fallback) · `transform`
   (redact | patient-consistent pseudonymise + date-shift, Faker) · `evaluate` (P/R/F1 + residual
   leakage) · `pipeline` · `trust_demo`.
-- `run_eval.py` CLI · `app/streamlit_app.py` + `app_gradio.py` demos · `tests/` mirror `noteguard/`.
+- `run_eval.py` CLI · `app/streamlit_app.py` demo · `tests/` mirror `noteguard/`.
 
 ## Code style
 - Python 3.10+, type hints on function signatures. The pure-Python rule layer must stay importable

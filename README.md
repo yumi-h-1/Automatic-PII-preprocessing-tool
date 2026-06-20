@@ -85,8 +85,7 @@ python -m spacy download en_core_web_sm
 
 python run_eval.py --compare --limit 300   # reproduce the table → results.json
 python -m noteguard.trust_demo             # two NHS Trusts share only de-identified data → data/out/
-streamlit run app/streamlit_app.py         # full demo: Try-it · Metrics · Governance · Two-Trust
-python app_gradio.py                        # lightweight Gradio demo
+streamlit run app/streamlit_app.py         # demo: Try-it · Metrics · Governance · Two-Trust
 python -m pytest tests/ -v
 ```
 

@@ -2,10 +2,10 @@
 
 Presidio anonymises per-document; the value NoteGuard adds is *cross-note,
 patient-consistent* de-identification — the same patient maps to the same
-surrogate across their whole admission journey, and their dates are shifted by a
-single consistent offset so intervals (and therefore clinical timelines) survive.
-That utility-preserving longitudinal property is what makes the cleaned data
-useful for downstream / federated training instead of just safe.
+surrogate across their whole admission journey. Only date-of-birth is treated as
+PII; it is shifted by a single consistent per-patient offset (visit / admission
+dates are clinically useful and left intact). That utility-preserving property is
+what makes the cleaned data useful for downstream / federated training, not just safe.
 
 Surrogates are realistic en_GB fakes (folded in from the Presidio branch's Faker
 vault) so the output reads like a real note — better for training than `Patient_001`
@@ -25,6 +25,31 @@ from .recognizers import Span
 
 REDACTION = "redaction"
 PSEUDONYM = "pseudonym"
+
+# Human-readable placeholders for redaction — clearer than raw entity codes
+# (e.g. "NMC number: [NMC number]" instead of "[ORGANIZATION] number: [NMC]").
+_REDACT_LABEL = {
+    "PERSON": "name",
+    "DATE_TIME": "date of birth",
+    "UK_NHS": "NHS number",
+    "UK_NINO": "NI number",
+    "UK_POSTCODE": "postcode",
+    "UK_PASSPORT": "passport number",
+    "UK_VEHICLE_REGISTRATION": "vehicle registration",
+    "GMC": "GMC number",
+    "NMC": "NMC number",
+    "NHS_ODS": "ODS code",
+    "RECORD_ID": "record ID",
+    "LOCATION": "location",
+    "EMAIL_ADDRESS": "email",
+    "PHONE_NUMBER": "phone",
+    "IP_ADDRESS": "IP address",
+    "URL": "URL",
+}
+
+
+def redaction_label(entity_type: str) -> str:
+    return _REDACT_LABEL.get(entity_type, entity_type)
 
 _DATE_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d/%m/%y", "%d-%m-%y"]
 _POSTCODE_INWARD = re.compile(r"\s*\d[A-Za-z]{2}\s*$")
@@ -172,11 +197,11 @@ def apply_transform(
     for s in sorted(spans, key=lambda x: x.start, reverse=True):
         original = text[s.start:s.end]
         if method == REDACTION:
-            repl = f"[{s.entity_type}]"
+            repl = f"[{redaction_label(s.entity_type)}]"
         else:  # PSEUDONYM
             if s.entity_type == "DATE_TIME":
                 shifted = _shift_date(original, offset)
-                repl = shifted if shifted else "[DATE_TIME]"
+                repl = shifted if shifted else f"[{redaction_label('DATE_TIME')}]"
             else:
                 repl = vault.token_for(s.entity_type, original)
         out = out[:s.start] + repl + out[s.end:]

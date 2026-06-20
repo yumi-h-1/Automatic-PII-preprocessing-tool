@@ -39,8 +39,10 @@ class PresidioDetector:
     # over-tags abbreviations/labels ("NHS", "DOB …", "GMC") as ORG, which both creates
     # false positives and swallows precise rule spans (dates, NHS numbers). NHS site
     # names are caught instead by the _SITE_RE LOCATION rule (incl. "… Trust").
+    # DATE_TIME is also EXCLUDED: only date-of-birth dates are PII (caught by the _DOB_RE
+    # rule); visit / encounter / admission dates are clinically useful and left intact.
     KEEP = {
-        "PERSON", "DATE_TIME", "EMAIL_ADDRESS", "PHONE_NUMBER",
+        "PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER",
         "LOCATION", "UK_NHS", "UK_NINO", "UK_PASSPORT",
         "UK_VEHICLE_REGISTRATION", "IP_ADDRESS", "URL",
     }

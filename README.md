@@ -24,9 +24,10 @@ layer** Presidio leaves to you:
 2. **Domain adaptation to messy clinical text.** NHS-aware recognisers: checksum-validated NHS numbers
    **plus** context-anchored detection for the dataset's 9-digit synthetic numbers Presidio's `UK_NHS`
    misses, plus GMC/NMC clinician IDs, ODS org codes and record UUIDs.
-3. **Patient-consistent, longitudinal de-identification.** Same patient → same surrogate across their
-   whole admission journey, with each patient's dates shifted by one consistent offset so clinical
-   intervals survive — *useful* data, not just safe data. Realistic en_GB fakes (or `[TYPE]` redaction).
+3. **Patient-consistent de-identification.** Same patient → same surrogate across their whole
+   admission journey. Only date-of-birth is treated as PII (shifted by a consistent per-patient
+   offset); visit / admission dates are clinically useful and left intact. Realistic en_GB fakes
+   (or `[label]` redaction).
 4. **Pluggable + degrades gracefully.** One `Detector` interface (Rule / Presidio); the pure-Python
    rule layer + eval run even if spaCy/Presidio are unavailable.
 5. **Governance wrapper.** Per-note audit of what was removed + the dataset-level leakage report,

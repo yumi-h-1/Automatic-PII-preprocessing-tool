@@ -66,11 +66,14 @@ _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 _PHONE_RE = re.compile(r"\b(?:\+?44\s?|0)(?:\d\s?){9,10}\b")
 # UK postcode (simplified but standard) e.g. SW1A 1AA, M1 1AE
 _POSTCODE_RE = re.compile(r"\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b", re.IGNORECASE)
-_DATE_RE = re.compile(
-    r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"
+# Dates are PII only in a DATE-OF-BIRTH context. Visit / encounter / admission dates
+# are clinically useful and NOT identifiers on their own, so they're left intact.
+# Captures the date itself as group 1.
+_DOB_RE = re.compile(
+    r"(?i)\b(?:DOB|D\.O\.B\.?|date\s+of\s+birth|born(?:\s+on)?)[\s:]*"
+    r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"
     r"|\d{4}-\d{2}-\d{2}"
-    r"|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{2,4})\b",
-    re.IGNORECASE,
+    r"|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{2,4})"
 )
 # --- NHS staff / organisation identifiers (context-anchored to avoid noise) ---
 _GMC_RE = re.compile(r"(?i)\bGMC(?:\s*(?:no|number|#))?[:\s#]*(\d{7})\b")
@@ -97,7 +100,7 @@ _PLAIN = [
     (_EMAIL_RE, EMAIL, 0),
     (_PHONE_RE, PHONE, 0),
     (_POSTCODE_RE, POSTCODE, 0),
-    (_DATE_RE, DATE, 0),
+    (_DOB_RE, DATE, 1),
     (_GMC_RE, GMC, 1),
     (_NMC_RE, NMC, 1),
     (_NMC_BARE_RE, NMC, 1),

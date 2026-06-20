@@ -11,7 +11,7 @@ from noteguard.transform import (
 def test_redaction_removes_value_and_tags():
     text = "NHS 943 476 5919"
     out, _ = apply_transform(text, find_rule_spans(text), REDACTION)
-    assert "[UK_NHS]" in out
+    assert "[NHS number]" in out
     assert "943 476 5919" not in out
 
 
@@ -41,10 +41,12 @@ def test_vehicle_surrogate_format():
     assert re.fullmatch(r"[A-Z]{2}\d{2} [A-Z]{3}", reg)
 
 
-def test_date_shift_preserves_interval():
-    text = "seen 12/03/1981 and again 20/03/1981"
+def test_date_shift_is_consistent_per_patient():
+    # Only date-of-birth dates are treated as PII, so both need a DOB context. The
+    # per-patient offset is consistent, so the interval between them is preserved.
+    text = "DOB 12/03/1981 ... DOB 20/03/1981"
     out, _ = apply_transform(text, find_rule_spans(text), PSEUDONYM, PseudonymVault(), person_id="p1")
     assert "12/03/1981" not in out and "20/03/1981" not in out
     dates = [datetime.strptime(d, "%d/%m/%Y") for d in re.findall(r"\d{2}/\d{2}/\d{4}", out)]
     assert len(dates) == 2
-    assert (dates[1] - dates[0]).days == 8  # 8-day interval survives the shift
+    assert (dates[1] - dates[0]).days == 8  # consistent offset preserves the interval

@@ -37,7 +37,7 @@ ENTITY_COLORS = {
 st.set_page_config(page_title="NoteGuard", page_icon="🛡️", layout="wide")
 
 
-@st.cache_resource(show_spinner="Loading detection engine (Presidio + rules) + sample notes…")
+@st.cache_resource(show_spinner="Loading the de-identification engine + sample notes…")
 def load_engine():
     detector = build_detector(use_presidio=True)
     try:
@@ -190,8 +190,7 @@ with tab_metrics:
             hide_index=True, use_container_width=True,
         )
         st.caption(
-            f"Detector: `{name}` · model: `en_core_web_lg` (honest generalisation). "
-            "Precision is a conservative lower bound — clinician names and unlisted locations "
+            "Precision is a conservative lower bound. Clinician names and unlisted locations "
             "detected correctly are counted as false positives."
         )
     else:
@@ -208,7 +207,7 @@ with tab_gov:
     five_safes = [
         ("✅ Safe Data",
          "DAPB1523 / ICO standard",
-         "Names · NHS number (mod-11 + 9-digit) · DOB · postcode → outward code · "
+         "Names · NHS number · DOB · postcode → outward code · "
          "GMC/NMC clinician IDs · ODS org codes · record UUIDs · site names. "
          "NRP (nationality/religion) always redacted, never pseudonymised (UK GDPR Art. 9)."),
         ("✅ Safe Settings",
@@ -241,7 +240,7 @@ with tab_gov:
 NHS Trust (raw notes)
     │
     ▼  NoteGuard gate (runs inside Trust)
-    │   ftfy clean → detect (Presidio + lg NER + rules) → sanitise → leakage check
+    │   clean → detect PII → sanitise → leakage check
     │   low-confidence spans → IG analyst review queue
     │
     ▼  de-identified notes + audit log  (no PHI crosses boundary)

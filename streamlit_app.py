@@ -211,8 +211,6 @@ with tab_metrics:
         m1, m2, m3 = st.columns(3)
         m1.metric("Identifiers removed", f"{100 - leak:.1f}%", help="Known PII not present in output")
         m2.metric("Residual leakage", f"{leak:.2f}%",
-                  delta=f"{leak:.2f}%" if leak > 0 else None,
-                  delta_color="inverse",
                   help="Fraction of known PII surviving sanitisation — target: 0%")
         m3.metric("Notes evaluated", r["notes_evaluated"])
         st.markdown("##### Detection recall by entity type")

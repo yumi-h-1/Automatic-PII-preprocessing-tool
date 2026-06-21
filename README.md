@@ -1,3 +1,11 @@
+---
+title: NoteGuard — NHS De-Identification Gate
+emoji: 🛡️
+sdk: docker
+app_port: 8501
+pinned: false
+---
+
 # 🛡️ NoteGuard
 
 **Automatic PII sanitisation for NHS clinical notes — clean data in, no identifiers out.**
@@ -36,7 +44,7 @@ layer** Presidio leaves to you:
 ## Results — residual leakage drops as we layer detection
 
 *Known identifiers (joined from the structured tables) still present after sanitisation. Measured on all
-**1,602 notes** (1,027 known-PII occurrences). Reproduce with `python run_eval.py --compare`.*
+**1,602 notes** (1,027 known-PII occurrences). Reproduce with `python tests/run_eval.py --compare`.*
 
 | Detector | NHS number F1 | PERSON recall | **Residual leakage** |
 |---|---|---|---|
@@ -62,11 +70,24 @@ The rules→engine drop is the headline: it shows, with numbers, exactly what th
                                            └────────────────────────────┘
 ```
 
-`noteguard/` — `data` (load + ground-truth join, **eval-only oracle**) · `recognizers` (pure-Python
-rules: NHS checksum/context, postcode, date, phone, email, GMC/NMC/ODS, UUID) · `detect`
-(`RuleDetector` / `PresidioDetector`) · `transform`
-(redaction | patient-consistent pseudonymisation + date-shift, Faker vault) · `evaluate` (P/R/F1 +
-residual leakage) · `pipeline` · `trust_demo`.
+**Project layout** (Gold-RAP "analysis as a product"):
+
+```
+src/                 the package
+  data.py            load CSVs + ground-truth join (EVAL-ONLY oracle)
+  recognisers.py     pure-Python rules: NHS checksum/context, postcode, date, phone, email, GMC/NMC/ODS, UUID
+  detect.py          RuleDetector / PresidioDetector behind one Detector interface
+  transform.py       redaction | patient-consistent pseudonymisation + DOB date-shift (Faker vault)
+  pipeline.py        single-note detect -> sanitise -> audit
+  evaluate.py        detection P/R/F1 + residual-leakage metric
+  trust_demo.py      two-Trust sanitise-at-source demo
+tests/               unit tests + run_eval.py (the evaluation CLI)
+docs/                tool_card.md · CHANGELOG.md
+data/                input CSVs (gitignored)
+outputs/             generated artifacts: results.json, manifests (gitignored)
+streamlit_app.py     demo UI + Hugging Face Space entry point
+Dockerfile           HF Spaces (Docker) deploy      pyproject.toml   packaging + lint/test config
+```
 
 ## Trust & governance — mapped to the NHS Five Safes
 - **Safe data** — PII removed to DAPB1523/ICO standard across patient + staff + org identifiers.
@@ -78,18 +99,35 @@ residual leakage) · `pipeline` · `trust_demo`.
 ## Run it
 
 ```bash
-python -m venv .venv; .\.venv\Scripts\Activate.ps1      # Windows PowerShell
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+# 1) create AND activate the virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1        # Windows PowerShell
+# source .venv/Scripts/activate     #   ... or Windows Git Bash
+# source .venv/bin/activate         #   ... or macOS / Linux
 
-python run_eval.py --compare --limit 300   # reproduce the table → results.json
-python -m noteguard.trust_demo             # two NHS Trusts share only de-identified data → data/out/
-streamlit run app/streamlit_app.py         # demo: Try-it · Metrics · Governance · Two-Trust
-python -m pytest tests/ -v
+# 2) install the package (editable) + the spaCy model
+pip install -e ".[app,dev]"
+python -m spacy download en_core_web_lg   # or en_core_web_sm for a faster, lighter run
+
+# 3) run
+python tests/run_eval.py --compare --limit 300   # reproduce the table -> outputs/results.json
+python -m src.trust_demo                          # two NHS Trusts share only de-identified data -> outputs/
+streamlit run streamlit_app.py                    # demo: Try-it · Metrics · Governance · Two-Trust
+pytest -q                                          # unit tests
 ```
 
 The dataset is pulled automatically on first run. To run fully offline, drop the three CSVs in a
 folder and set `NOTEGUARD_DATA_DIR=/path/to/csvs`.
+
+## Deploy the live demo (Hugging Face Spaces)
+
+```bash
+pip install -U huggingface_hub      # provides the `hf` CLI
+hf auth login                        # paste a WRITE token from https://huggingface.co/settings/tokens
+hf repos create <user>/noteguard --repo-type space --space-sdk docker
+git remote add space https://huggingface.co/spaces/<user>/noteguard
+git push space HEAD:main             # builds the image and serves streamlit_app.py
+```
 
 ## Data notes (found by inspecting the data, not assuming)
 - NHS numbers in this synthetic set are **9 digits** (real ones are 10 + mod-11 check). We catch both:

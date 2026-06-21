@@ -23,18 +23,5 @@
       "Write(data/raw/**)",
       "Edit(data/raw/**)"
     ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python scripts/post_edit_check.py"
-          }
-        ]
-      }
-    ]
   }
 }

@@ -2,9 +2,13 @@
 import re
 from datetime import datetime
 
-from noteguard.recognizers import find_rule_spans, nhs_number_is_valid
-from noteguard.transform import (
-    PSEUDONYM, REDACTION, PseudonymVault, _fake_nhs_number, apply_transform,
+from src.recognisers import find_rule_spans, nhs_number_is_valid
+from src.transform import (
+    PSEUDONYM,
+    REDACTION,
+    PseudonymVault,
+    _fake_nhs_number,
+    apply_transform,
 )
 
 

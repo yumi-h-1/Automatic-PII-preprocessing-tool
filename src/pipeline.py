@@ -8,7 +8,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from .detect import Detector, build_detector
-from .recognizers import Span
+from .recognisers import Span
 from .transform import REDACTION, PseudonymVault, Replacement, apply_transform
 
 

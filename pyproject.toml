@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noteguard"
+version = "0.0.1"
+description = "Sanitise-at-source PII removal for NHS clinical notes (Presidio + spaCy)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "presidio-analyzer",
+    "presidio-anonymizer",
+    "spacy>=3.7,<3.9",
+    "faker",
+    "ftfy",
+    "huggingface_hub",
+    "pandas",
+]
+
+[project.optional-dependencies]
+app = ["streamlit"]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]  # long descriptive lines/docstrings tolerated

@@ -1,9 +1,9 @@
 """NoteGuard — demo UI.
 
-Run from the repo root:  streamlit run app/streamlit_app.py
+Run from the repo root:  streamlit run streamlit_app.py
 
 Try-it (detect & sanitise) · Metrics & leakage · Governance (Five Safes) · Two-Trust sharing.
-Built on the noteguard package (pluggable detectors + patient-consistent transforms).
+Built on the NoteGuard package (src/) — pluggable detectors + patient-consistent transforms.
 """
 from __future__ import annotations
 
@@ -18,14 +18,14 @@ import streamlit as st
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from noteguard.data import load_notes  # noqa: E402
-from noteguard.detect import build_detector  # noqa: E402
-from noteguard.evaluate import evaluate  # noqa: E402
-from noteguard.pipeline import Pipeline  # noqa: E402
-from noteguard.transform import PSEUDONYM, REDACTION, PseudonymVault  # noqa: E402
+from src.data import load_notes  # noqa: E402
+from src.detect import build_detector  # noqa: E402
+from src.evaluate import evaluate  # noqa: E402
+from src.pipeline import Pipeline  # noqa: E402
+from src.transform import PSEUDONYM, REDACTION, PseudonymVault  # noqa: E402
 
-OUT_DIR = REPO / "data" / "out"
-RESULTS = REPO / "results.json"
+OUT_DIR = REPO / "outputs"
+RESULTS = REPO / "outputs" / "results.json"
 
 ENTITY_COLORS = {
     "PERSON": "#ffd6e0", "UK_NHS": "#ffe9b3", "DATE_TIME": "#d4f4dd", "UK_POSTCODE": "#cfe8ff",
@@ -271,14 +271,14 @@ with tab_trust:
     )
     summary = load_json(OUT_DIR / "trust_demo_summary.json")
     if st.button("▶ Run two-Trust demo"):
-        from noteguard.trust_demo import main as run_trust
+        from src.trust_demo import main as run_trust
         with st.spinner("Sanitising at each Trust…"):
             run_trust()
         summary = load_json(OUT_DIR / "trust_demo_summary.json")
 
     if summary:
         cols = st.columns(len(summary["trusts"]) + 1)
-        for col, t in zip(cols, summary["trusts"]):
+        for col, t in zip(cols, summary["trusts"], strict=False):
             with col:
                 st.markdown(f"#### 🏥 {t['trust'].split('(')[0].strip()}")
                 st.metric("Notes de-identified", t["notes_deidentified"])
@@ -292,4 +292,4 @@ with tab_trust:
             st.metric("Total residual leaks", summary["total_residual_leaks"])
             st.caption("→ ready for federated AI / FLock.io")
     else:
-        st.info("Click **Run two-Trust demo** or run `python -m noteguard.trust_demo`.")
+        st.info("Click **Run two-Trust demo** or run `python -m src.trust_demo`.")

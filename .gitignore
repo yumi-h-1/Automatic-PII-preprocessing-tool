@@ -1,14 +1,19 @@
-# NHS PHI safety: raw data, de-identified output, and the re-identification vault NEVER leave the repo
-data/raw/
-data/out/
+# NHS PHI safety: raw data, generated output, and the re-identification vault NEVER leave the repo
+data/*
+!data/.gitkeep
+outputs/*
+!outputs/.gitkeep
 *.vault.json
 
-# Python
+# Python / packaging
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
 *.egg-info/
+build/
+dist/
 
 # macOS / zip extraction junk
 .DS_Store

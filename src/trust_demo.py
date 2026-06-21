@@ -6,8 +6,8 @@ de-identified text + a content-free audit manifest to a shared pool. Raw notes a
 vaults never leave the Trust. This is the sanitise-at-source gate that sits in
 front of a federated SDE / FLock.io training round.
 
-    python -m noteguard.trust_demo                 # pseudonymise, 300 notes
-    python -m noteguard.trust_demo redaction 600
+    python -m src.trust_demo                 # pseudonymise, 300 notes
+    python -m src.trust_demo redaction 600
 """
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from pathlib import Path
 
 from .data import NoteRecord, load_notes
 from .detect import build_detector
-from .evaluate import ground_truth_spans, value_variants, _find_all
+from .evaluate import _find_all, ground_truth_spans, value_variants
 from .pipeline import Pipeline
 from .transform import PSEUDONYM, PseudonymVault
 
-OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "out"
+OUT_DIR = Path(__file__).resolve().parent.parent / "outputs"
 TRUST_NAMES = {0: "Trust A (Northgate NHS Foundation Trust)", 1: "Trust B (Riverside NHS Trust)"}
 
 

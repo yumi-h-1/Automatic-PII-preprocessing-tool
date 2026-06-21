@@ -21,7 +21,7 @@ from datetime import datetime
 
 from .data import NoteRecord
 from .detect import Detector
-from .recognizers import Span
+from .recognisers import Span
 from .transform import REDACTION, PseudonymVault, apply_transform
 
 _DATE_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d/%m/%y", "%d-%m-%y", "%d %b %Y", "%d %B %Y"]

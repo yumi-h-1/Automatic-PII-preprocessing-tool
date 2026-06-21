@@ -2,9 +2,9 @@
 
 Uses the pure-Python RuleDetector so the test is fast and needs no spaCy/Presidio.
 """
-from noteguard.detect import RuleDetector
-from noteguard.pipeline import Pipeline
-from noteguard.transform import PSEUDONYM
+from src.detect import RuleDetector
+from src.pipeline import Pipeline
+from src.transform import PSEUDONYM
 
 
 def test_pipeline_removes_known_pii():

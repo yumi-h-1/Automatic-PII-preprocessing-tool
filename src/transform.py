@@ -21,7 +21,7 @@ import string
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from .recognizers import Span
+from .recognisers import Span
 
 REDACTION = "redaction"
 PSEUDONYM = "pseudonym"
@@ -57,7 +57,7 @@ _POSTCODE_INWARD = re.compile(r"\s*\d[A-Za-z]{2}\s*$")
 try:  # realistic surrogates if Faker is available
     from faker import Faker
 
-    _FAKER: "Faker | None" = Faker("en_GB")
+    _FAKER: Faker | None = Faker("en_GB")
 except Exception:  # pragma: no cover - keeps the pure-Python path working
     _FAKER = None
 
@@ -156,7 +156,7 @@ def _fake_vehicle(value: str) -> str:
 
 def _fake_nhs_number(value: str) -> str:
     """Deterministic, checksum-VALID fake NHS number (stable per original)."""
-    from .recognizers import nhs_number_is_valid
+    from .recognisers import nhs_number_is_valid
 
     seed = _seed(value)
     for _ in range(1000):
@@ -211,7 +211,7 @@ def apply_transform(
 
 
 if __name__ == "__main__":
-    from .recognizers import find_rule_spans
+    from .recognisers import find_rule_spans
 
     txt = "Pt John seen 12/03/1981, NHS 943 476 5919. Reviewed again 20/03/1981."
     spans = find_rule_spans(txt)

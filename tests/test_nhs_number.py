@@ -1,5 +1,5 @@
 """NHS number Modulus-11 checksum and all surface forms the dataset uses."""
-from noteguard.recognizers import UK_NHS, find_rule_spans, nhs_number_is_valid
+from src.recognisers import UK_NHS, find_rule_spans, nhs_number_is_valid
 
 
 def _has_nhs(text: str) -> bool:

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .recognizers import Span, find_rule_spans
+from .recognisers import Span, find_rule_spans
 
 
 class Detector(Protocol):
@@ -70,10 +70,10 @@ class PresidioDetector:
         self.engine = AnalyzerEngine(nlp_engine=provider.create_engine())
         self.score_threshold = score_threshold
         self.review_threshold = review_threshold
-        self._register_uk_recognizers()
+        self._register_uk_recognisers()
 
-    def _register_uk_recognizers(self) -> None:
-        """Register UK entity recognizers that Presidio documents but does not ship."""
+    def _register_uk_recognisers(self) -> None:
+        """Register UK entity recognisers that Presidio documents but does not ship."""
         from presidio_analyzer import Pattern, PatternRecognizer
 
         custom = [

@@ -91,7 +91,7 @@ st.caption(
 detector, NOTES = load_engine()
 
 tab_try, tab_metrics, tab_gov, tab_trust = st.tabs(
-    ["🔎 Try it", "📊 Metrics & leakage", "🏛️ Governance (Five Safes)", "🤝 Two-Trust sharing"]
+    ["🔎 Try it", "📊 Metrics & Leakage", "🏛️ Governance (Five Safes)", "🤝 Two-Trust sharing"]
 )
 
 # ---------------------------------------------------------------- Try it
@@ -167,7 +167,7 @@ with tab_metrics:
     )
     data = load_json(RESULTS)
     n = st.slider("Notes to evaluate (live run)", 50, 1000, 200, step=50)
-    if st.button("▶ Run evaluation (presidio+rules, en_core_web_lg)"):
+    if st.button("▶ Run evaluation"):
         with st.spinner("Evaluating…"):
             recs = load_notes(limit=n)
             res = evaluate(recs, detector, PSEUDONYM).to_dict()

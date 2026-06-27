@@ -136,7 +136,13 @@ pytest -q                                          # unit tests
 The dataset is pulled automatically on first run. To run fully offline, drop the three CSVs in a
 folder and set `NOTEGUARD_DATA_DIR=/path/to/csvs`.
 
-## Deploy the live demo (Hugging Face Spaces)
+## Deploy the live demo
+
+**Streamlit Community Cloud (free, no card — recommended).** Point <https://share.streamlit.io> at this
+repo with main file `streamlit_app.py`. `requirements.txt` ships the small spaCy model so it fits the
+free RAM; `build_detector` auto-uses whatever model is installed. Full steps: [docs/DEPLOY_STREAMLIT_CLOUD.md](docs/DEPLOY_STREAMLIT_CLOUD.md).
+
+**Hugging Face Spaces (free, 16 GB — keeps `en_core_web_lg`).**
 
 ```bash
 pip install -U huggingface_hub      # provides the `hf` CLI

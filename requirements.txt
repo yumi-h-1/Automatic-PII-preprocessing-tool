@@ -1,0 +1,18 @@
+# Streamlit Community Cloud installs from this file (no `pip install -e .`).
+# src/ is importable because streamlit_app.py adds the repo root to sys.path.
+#
+# Memory-constrained free tier (~1GB): we ship en_core_web_sm (not lg) so the app
+# fits. build_detector auto-uses sm when lg is absent; set PII_SPACY_MODEL to override.
+streamlit
+presidio-analyzer
+presidio-anonymizer
+spacy>=3.8,<3.9
+faker
+ftfy
+huggingface_hub
+pandas
+pypdf
+requests
+datasets
+# spaCy English model (small) as a pinned wheel — Streamlit Cloud can't run `spacy download`.
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

@@ -50,6 +50,21 @@ ENTITY_COLORS = {
 st.set_page_config(page_title="NoteGuard", page_icon="🛡️", layout="wide")
 
 
+def _bridge_secrets_to_env():
+    """Streamlit Cloud exposes config via st.secrets; our engine/LLM client read os.environ.
+    Copy the known keys across so secrets configured in the dashboard take effect."""
+    import os
+    for key in ("PII_SPACY_MODEL", "LLM_ASSURE_API_KEY", "LLM_ASSURE_BASE_URL", "LLM_ASSURE_MODEL"):
+        try:
+            if key in st.secrets and key not in os.environ:
+                os.environ[key] = str(st.secrets[key])
+        except Exception:  # no secrets file configured — fine
+            break
+
+
+_bridge_secrets_to_env()
+
+
 @st.cache_resource(show_spinner="Loading the de-identification engine + sample notes…")
 def load_engine():
     detector = build_detector(use_presidio=True)

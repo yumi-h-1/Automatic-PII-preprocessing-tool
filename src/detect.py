@@ -162,24 +162,49 @@ class ComposedDetector:
         return _merge(spans)
 
 
+DEFAULT_SPACY_MODEL = "en_core_web_lg"
+_FALLBACK_SPACY_MODEL = "en_core_web_sm"
+
+
 def build_detector(
     use_presidio: bool = True,
-    spacy_model: str = "en_core_web_lg",
+    spacy_model: str | None = None,
     use_llm: bool = False,
 ) -> Detector:
-    """Best available detector; falls back to rules if Presidio import fails.
+    """Best available detector; falls back to rules if Presidio is unavailable.
 
-    spacy_model defaults to en_core_web_lg (100% name recall in benchmarks).
-    Pass en_core_web_sm for faster startup when recall trade-off is acceptable.
-    use_llm adds an optional LLM assurance pass when LLM_ASSURE_API_KEY is set
-    (no-op otherwise), composed via ComposedDetector.
+    Model resolution: explicit ``spacy_model`` arg > ``PII_SPACY_MODEL`` env var >
+    ``en_core_web_lg`` (100% name recall). If the requested model isn't installed
+    (e.g. a memory-constrained free host where only ``en_core_web_sm`` is present),
+    we transparently retry with ``en_core_web_sm`` before giving up to pure rules —
+    so a lighter deploy degrades to 91% recall instead of losing NER entirely.
+    use_llm adds an optional LLM assurance pass when LLM_ASSURE_API_KEY is set.
     """
+    import os
+
     base: Detector = RuleDetector()
     if use_presidio:
+        requested = spacy_model or os.environ.get("PII_SPACY_MODEL")
+        # Only ever try models that are actually installed — never let spaCy/Presidio
+        # attempt a (560MB) runtime download of a missing model on a constrained host.
         try:
-            base = PresidioDetector(spacy_model=spacy_model)
-        except Exception as e:  # pragma: no cover - environment dependent
-            print(f"[noteguard] Presidio unavailable ({e}); falling back to rules.")
+            from spacy.util import is_package
+
+            wanted = [requested] if requested else [DEFAULT_SPACY_MODEL, _FALLBACK_SPACY_MODEL]
+            wanted.append(_FALLBACK_SPACY_MODEL)  # always a last resort
+            installed = [m for m in dict.fromkeys(wanted) if m and is_package(m)]
+        except Exception:  # pragma: no cover - spaCy missing entirely
+            installed = []
+        for candidate in installed:
+            try:
+                base = PresidioDetector(spacy_model=candidate)
+                if requested and candidate != requested:
+                    print(f"[noteguard] '{requested}' not installed; using '{candidate}'.")
+                break
+            except Exception as e:  # pragma: no cover - environment dependent
+                print(f"[noteguard] Presidio with '{candidate}' unavailable ({e}).")
+        if isinstance(base, RuleDetector):
+            print("[noteguard] No spaCy model installed; falling back to rules.")
     if use_llm:
         from .llm_assure import LLMAssurance
 

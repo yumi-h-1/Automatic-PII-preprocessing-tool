@@ -16,6 +16,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -38,6 +39,10 @@ ENTITY_COLORS = {
     "UK_NINO": "#ffe9b3", "GMC": "#f0e0a0", "NMC": "#f0e0a0", "NHS_ODS": "#f0e0a0",
     "LLM_PII": "#e8d6ff",
 }
+
+# NHS-brand categorical palette for the donut chart
+NHS_PALETTE = ["#005EB8", "#0072CE", "#41B6E6", "#00A499", "#007F3B",
+               "#330072", "#7C2855", "#ED8B00", "#8A1538"]
 
 st.set_page_config(page_title="NoteGuard", layout="wide")
 
@@ -116,7 +121,7 @@ def render_single(text: str, method: str, detector, person_id: str, note_id: str
     scroll_box(html.escape(result.sanitised).replace("\n", "<br>"))
 
     st.markdown("##### 3) Identifiers removed")
-    pii_bar_chart(Counter(s.entity_type for s in result.spans))
+    pii_chart(Counter(s.entity_type for s in result.spans))
 
     if result.review_items:
         st.warning(
@@ -170,21 +175,33 @@ def deidentify_rows(records, method: str, detector) -> tuple[list[dict], Counter
     return rows, counts
 
 
-def pii_bar_chart(counts: Counter):
-    """Human-friendly bar chart of how many identifiers were detected, by type."""
+def pii_chart(counts: Counter):
+    """Human-friendly donut chart of how many identifiers were detected, by type."""
     total = sum(counts.values())
     if not total:
         st.info("No identifiers detected.")
         return
     st.markdown(f"**{total} identifier{'s' if total != 1 else ''} detected**")
-    df = pd.DataFrame({"detected": list(counts.values())},
-                      index=[redaction_label(e) for e in counts]).sort_values("detected")
-    st.bar_chart(df, color="#005EB8", horizontal=True)
+    df = pd.DataFrame({"type": [redaction_label(e) for e in counts],
+                       "count": list(counts.values())})
+    chart = (
+        alt.Chart(df)
+        .mark_arc(innerRadius=65, stroke="#ffffff", strokeWidth=2)
+        .encode(
+            theta=alt.Theta("count:Q", stack=True),
+            color=alt.Color("type:N", scale=alt.Scale(range=NHS_PALETTE),
+                            legend=alt.Legend(title="Identifier type")),
+            tooltip=[alt.Tooltip("type:N", title="Type"),
+                     alt.Tooltip("count:Q", title="Detected")],
+        )
+        .properties(height=300)
+    )
+    st.altair_chart(chart, use_container_width=True)
 
 
 def render_batch_result(rows: list[dict], counts: Counter, stem: str):
     """Chart + reviewable preview + downloads for a de-identified batch."""
-    pii_bar_chart(counts)
+    pii_chart(counts)
     with st.expander("Review the de-identified output before you download (first 10 rows)"):
         st.dataframe(pd.DataFrame(rows).head(10), hide_index=True, use_container_width=True)
     download_rows(rows, stem)

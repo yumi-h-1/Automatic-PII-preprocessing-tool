@@ -21,6 +21,7 @@ sys.path.insert(0, str(REPO))  # make the `src` package importable when run as a
 from src.data import load_notes  # noqa: E402
 from src.detect import RuleDetector, build_detector  # noqa: E402
 from src.evaluate import EvalResult, evaluate  # noqa: E402
+from src.quality import data_quality_report, print_quality_report  # noqa: E402
 from src.transform import REDACTION  # noqa: E402
 
 OUTPUT_DIR = REPO / "outputs"
@@ -56,6 +57,8 @@ def main() -> None:
     records = load_notes(limit=args.limit)
     logger.info("%d notes; %d known PII values joined.",
                 len(records), sum(len(r.ground_truth) for r in records))
+
+    print_quality_report(data_quality_report(records))
 
     runs: dict[str, EvalResult] = {}
     if args.compare:

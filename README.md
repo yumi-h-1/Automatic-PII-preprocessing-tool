@@ -45,7 +45,18 @@ layer** Presidio leaves to you:
 4. **Pluggable + degrades gracefully.** One `Detector` interface (Rule / Presidio); the pure-Python
    rule layer + eval run even if spaCy/Presidio are unavailable.
 5. **Governance wrapper.** Per-note audit of what was removed + the dataset-level leakage report,
-   mapped to the NHS **Five Safes**.
+   mapped to the NHS **Five Safes**, **Caldicott Principles**, and **DPA 2018 / UK GDPR**.
+6. **Optional LLM assurance.** A free, OpenAI-compatible LLM can run as a recall-oriented safety net
+   over the engine; its hits are flagged for human review, never auto-trusted (`src/llm_assure.py`).
+
+## The public demo (two tabs people can actually use)
+- **De-identify your data** — upload a `.txt` / `.csv` / `.pdf` (or paste), get de-identified data back.
+  Uploads are processed **in memory only** — nothing is written to disk (asserted by `tests/test_privacy.py`).
+- **Get data by domain** — pick a clinical domain (diabetes, cardiovascular, …) and download de-identified
+  data drawn from the NHS synthetic notes (primary) plus a curated catalog of public free-text datasets.
+
+> Applying for the NHSE **Data Scientist (Data Wrangler), Band 7** role? See
+> [docs/role_alignment.md](docs/role_alignment.md) for the JD-to-feature map.
 
 ## Results — residual leakage drops as we layer detection
 
@@ -118,7 +129,7 @@ python -m spacy download en_core_web_lg   # or en_core_web_sm for a faster, ligh
 # 3) run
 python tests/run_eval.py --compare --limit 300   # reproduce the table -> outputs/results.json
 python -m src.trust_demo                          # two NHS Trusts share only de-identified data -> outputs/
-streamlit run streamlit_app.py                    # demo: Try-it · Metrics · Governance · Two-Trust
+streamlit run streamlit_app.py                    # demo: De-identify · Get-by-domain · Metrics · Governance · Two-Trust
 pytest -q                                          # unit tests
 ```
 

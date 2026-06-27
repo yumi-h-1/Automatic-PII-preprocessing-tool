@@ -141,15 +141,49 @@ def _merge(spans: list[Span]) -> list[Span]:
     return kept
 
 
-def build_detector(use_presidio: bool = True, spacy_model: str = "en_core_web_lg") -> Detector:
+class ComposedDetector:
+    """Run a base detector then optional extra detectors (e.g. LLM assurance),
+    unioning all spans through ``_merge`` so output stays disjoint and precise
+    rules still win on overlap. Extra-detector failures are swallowed (assurance
+    is additive — it must never break the deterministic path)."""
+
+    def __init__(self, base: Detector, *extra: Detector):
+        self.base = base
+        self.extra = list(extra)
+        self.name = "+".join([getattr(base, "name", "?"), *(getattr(d, "name", "?") for d in extra)])
+
+    def detect(self, text: str) -> list[Span]:
+        spans = list(self.base.detect(text))
+        for d in self.extra:
+            try:
+                spans += d.detect(text)
+            except Exception:  # pragma: no cover - assurance is best-effort
+                continue
+        return _merge(spans)
+
+
+def build_detector(
+    use_presidio: bool = True,
+    spacy_model: str = "en_core_web_lg",
+    use_llm: bool = False,
+) -> Detector:
     """Best available detector; falls back to rules if Presidio import fails.
 
     spacy_model defaults to en_core_web_lg (100% name recall in benchmarks).
     Pass en_core_web_sm for faster startup when recall trade-off is acceptable.
+    use_llm adds an optional LLM assurance pass when LLM_ASSURE_API_KEY is set
+    (no-op otherwise), composed via ComposedDetector.
     """
+    base: Detector = RuleDetector()
     if use_presidio:
         try:
-            return PresidioDetector(spacy_model=spacy_model)
+            base = PresidioDetector(spacy_model=spacy_model)
         except Exception as e:  # pragma: no cover - environment dependent
             print(f"[noteguard] Presidio unavailable ({e}); falling back to rules.")
-    return RuleDetector()
+    if use_llm:
+        from .llm_assure import LLMAssurance
+
+        llm = LLMAssurance()
+        if llm.is_configured():
+            return ComposedDetector(base, llm)
+    return base

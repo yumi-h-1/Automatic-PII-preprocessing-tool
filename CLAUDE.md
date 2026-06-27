@@ -1,7 +1,6 @@
 # NoteGuard — NHS Clinical-Note PII Sanitisation
 
-Sanitise-at-source: detect + de-identify PII in free-text NHS clinical notes so only de-identified
-data leaves a Trust. Encode Vibe Coding Hackathon — FLock Sovereign AI Challenge, Public Sector & Citizen Services task (Encode Hub); fork of `NoteGuard/`.
+Sanitise-at-source: detect + de-identify PII in free-text NHS clinical notes so only de-identified data leaves a Trust.
 
 ## Commands
 ```bash
@@ -19,10 +18,15 @@ python -m pytest tests/ -v
 
 ## Architecture
 - `src/` — `data` (load + ground-truth join, EVAL-ONLY oracle) · `recognisers` (pure-Python
-  rules) · `detect` (Rule / Presidio, graceful fallback) · `transform`
+  rules) · `detect` (Rule / Presidio / optional LLM compose, graceful fallback) · `transform`
   (redact | patient-consistent pseudonymise + date-shift, Faker) · `evaluate` (P/R/F1 + residual
-  leakage) · `pipeline` · `trust_demo`.
-- `tests/run_eval.py` CLI · `streamlit_app.py` demo · `tests/` mirror `src/`. Packaged via `pyproject.toml`.
+  leakage) · `quality` (data-quality report) · `ingest` (in-memory bytes→records, no disk) ·
+  `cohorts` (clinical-domain keyword tagging) · `catalog` (public dataset registry) ·
+  `llm_assure` (optional OpenAI-compatible LLM assurance) · `pipeline` · `trust_demo`.
+- `tests/run_eval.py` CLI · `streamlit_app.py` demo (5 tabs: De-identify · Get-by-domain · Metrics ·
+  Governance · Two-Trust) · `tests/` mirror `src/`. Packaged via `pyproject.toml`.
+- LLM assurance is OFF unless `LLM_ASSURE_API_KEY` is set; never trusted blindly (spans flagged
+  `needs_review`). Tab 1 processes uploads in memory only — `tests/test_privacy.py` asserts no disk writes.
 
 ## Code style
 - Python 3.10+, type hints on function signatures. The pure-Python rule layer must stay importable

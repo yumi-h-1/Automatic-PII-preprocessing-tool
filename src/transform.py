@@ -45,6 +45,7 @@ _REDACT_LABEL = {
     "PHONE_NUMBER": "phone",
     "IP_ADDRESS": "IP address",
     "URL": "URL",
+    "LLM_PII": "identifier",
 }
 
 

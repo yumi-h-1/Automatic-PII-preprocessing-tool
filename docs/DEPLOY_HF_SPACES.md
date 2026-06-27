@@ -40,6 +40,19 @@ git push space main      # the Space rebuilds automatically
 The `Dockerfile` is the single source of truth for the entry point (`streamlit_app.py`) and the model,
 so renames in the repo never require changing Space settings — just push.
 
+## Optional: enable the LLM assurance pass
+The LLM assurance toggle (sidebar) is **off and inert** unless a free, OpenAI-compatible key is set.
+To enable it on the Space, add a **Space secret** (Settings → Variables and secrets):
+
+```
+LLM_ASSURE_API_KEY    a free key (Groq, Google Gemini, or HF Inference)
+LLM_ASSURE_BASE_URL   optional — OpenAI-compatible base URL (default: Groq)
+LLM_ASSURE_MODEL      optional — model id (default: a free Llama-3.x on Groq)
+```
+
+No key → the engine runs deterministically (rules + Presidio NER) and the toggle is a no-op, so
+casual testers never need a key.
+
 ## Notes
 - **Resource-constrained?** If the build is slow or the Space OOMs, change `en_core_web_lg` to
   `en_core_web_sm` in the `Dockerfile`.

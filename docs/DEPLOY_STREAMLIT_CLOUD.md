@@ -30,7 +30,7 @@ so just adding them in the dashboard is enough — no code change needed.
 
 ## Notes
 - **Want full 100% name recall?** Set `PII_SPACY_MODEL = "en_core_web_lg"` in secrets **and** swap the
-  model wheel in `requirements.txt` to the `lg` wheel — but `lg` may exceed the free RAM. The HF Space
-  (`docs/DEPLOY_HF_SPACES.md`, 16 GB free) keeps `lg` without this trade-off.
+  model wheel in `requirements.txt` to the `lg` wheel — but `lg` (~560 MB) may exceed the free tier's
+  RAM, so test it. The `sm` default is the safe choice for the free tier.
 - The dataset (NHSE synthetic notes) is pulled from Hugging Face on first use; if that fails the app
   still runs in paste/upload mode.

@@ -21,7 +21,7 @@
 
 ### 1. Owner and responsibility
 - **1.1 Organisation:** Encode Vibe Coding Hackathon team — FLock Sovereign AI Challenge, Public Sector & Citizen Services task (fork of `NoteGuard/`).
-- **1.2 Team:** Project contributors (see repository history / `docs/CHANGELOG.md`).
+- **1.2 Team:** Project contributors (see the repository's Git history).
 - **1.3 Senior responsible owner:** None — prototype, not in service. An SRO would be required before deployment.
 - **1.4 External supplier involvement:** No commercial supplier. Built on open-source components
   (Microsoft Presidio, spaCy `en_core_web_lg`, Faker).
@@ -59,8 +59,8 @@
 
 ### 4. Tool specification
 - **4.1.1 System architecture:** Python package (`src/`) run **inside** the Trust; `RuleDetector` +
-  `PresidioDetector` behind one `Detector` interface; Streamlit demo UI; deployable as a Docker
-  Hugging Face Space. Raw notes and the re-identification vault never leave the Trust.
+  `PresidioDetector` behind one `Detector` interface; Streamlit demo UI (deployable to Streamlit
+  Community Cloud). Raw notes and the re-identification vault never leave the Trust.
 - **4.1.2 Phase:** Prototype (hackathon) — not deployed.
 - **4.1.3 Maintenance:** CI (`ruff` + `pytest`) on every change; residual leakage acts as a regression
   gate; recognisers re-evaluated when the data or rules change.

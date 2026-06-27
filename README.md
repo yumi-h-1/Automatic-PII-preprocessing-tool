@@ -1,11 +1,3 @@
----
-title: NoteGuard — NHS De-Identification Gate
-emoji: 🛡️
-sdk: docker
-app_port: 8501
-pinned: false
----
-
 # 🛡️ NoteGuard
 
 **Automatic PII sanitisation for NHS clinical notes — clean data in, no identifiers out.**
@@ -99,11 +91,11 @@ src/                 the package
   evaluate.py        detection P/R/F1 + residual-leakage metric
   trust_demo.py      two-Trust sanitise-at-source demo
 tests/               unit tests + run_eval.py (the evaluation CLI)
-docs/                tool_card.md · CHANGELOG.md
+docs/                tool_card.md · report.md (ATRS) · role_alignment.md · DEPLOY_STREAMLIT_CLOUD.md
 data/                input CSVs (gitignored)
 outputs/             generated artifacts: results.json, manifests (gitignored)
-streamlit_app.py     demo UI + Hugging Face Space entry point
-Dockerfile           HF Spaces (Docker) deploy      pyproject.toml   packaging + lint/test config
+streamlit_app.py     demo UI (Streamlit Cloud entry point)
+pyproject.toml       packaging + lint/test config   requirements.txt   Streamlit Cloud deps
 ```
 
 ## Trust & governance — mapped to the NHS Five Safes
@@ -136,21 +128,11 @@ pytest -q                                          # unit tests
 The dataset is pulled automatically on first run. To run fully offline, drop the three CSVs in a
 folder and set `NOTEGUARD_DATA_DIR=/path/to/csvs`.
 
-## Deploy the live demo
+## Deploy the live demo — Streamlit Community Cloud (free, no card)
 
-**Streamlit Community Cloud (free, no card — recommended).** Point <https://share.streamlit.io> at this
-repo with main file `streamlit_app.py`. `requirements.txt` ships the small spaCy model so it fits the
-free RAM; `build_detector` auto-uses whatever model is installed. Full steps: [docs/DEPLOY_STREAMLIT_CLOUD.md](docs/DEPLOY_STREAMLIT_CLOUD.md).
-
-**Hugging Face Spaces (free, 16 GB — keeps `en_core_web_lg`).**
-
-```bash
-pip install -U huggingface_hub      # provides the `hf` CLI
-hf auth login                        # paste a WRITE token from https://huggingface.co/settings/tokens
-hf repos create <user>/noteguard --repo-type space --space-sdk docker
-git remote add space https://huggingface.co/spaces/<user>/noteguard
-git push space HEAD:main             # builds the image and serves streamlit_app.py
-```
+Point <https://share.streamlit.io> at this repo with main file `streamlit_app.py`. `requirements.txt`
+ships the small spaCy model so it fits the free tier's RAM, and `build_detector` auto-uses whichever
+model is installed. Full steps (incl. the optional LLM key as a secret): [docs/DEPLOY_STREAMLIT_CLOUD.md](docs/DEPLOY_STREAMLIT_CLOUD.md).
 
 ## Data notes (found by inspecting the data, not assuming)
 - NHS numbers in this synthetic set are **9 digits** (real ones are 10 + mod-11 check). We catch both:

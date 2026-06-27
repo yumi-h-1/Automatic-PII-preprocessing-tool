@@ -1,0 +1,4 @@
+# Viewer mode hides developer options and their keyboard shortcuts
+# (e.g. "C" = Clear cache, "R" = Rerun), so visitors can't trigger them.
+[client]
+toolbarMode = "viewer"

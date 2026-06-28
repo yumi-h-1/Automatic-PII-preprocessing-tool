@@ -3,8 +3,7 @@
 The deterministic detector (rules + Presidio NER) is the workhorse. This adds an
 *assurance* layer: a free, OpenAI-compatible LLM is asked to spot any identifiers
 that survived, and its hits are returned as ``needs_review=True`` spans so a human
-confirms them — we never blindly trust the model. This is the JD's "LLM exploitation"
-and "LLM assurance" in miniature.
+confirms them — we never blindly trust the model.
 
 Config is by environment, so the public demo stays key-free and light by default:
 

@@ -4,8 +4,6 @@ Sanitise-at-source: detect + de-identify PII in free-text NHS clinical notes so 
 data leaves a Trust. Ships a public two-tab demo — (1) upload a note/CSV/PDF and get de-identified
 data back, processed in memory only; (2) pick a clinical domain and download de-identified data from
 NHS + public sources — plus measured residual leakage and Five Safes / Caldicott / DPA governance.
-Built to evidence the NHS England **Data Scientist (Data Wrangler), Band 7** competencies
-(see `docs/role_alignment.md`).
 
 ## Commands
 ```bash
@@ -87,5 +85,3 @@ python -m pytest tests/ -v
   `python tests/run_eval.py --compare` and check residual leakage didn't regress.
 - After touching `src/ingest.py` or the de-id path, run `tests/test_privacy.py` — it asserts
   de-identification writes **no files to disk** (the demo's "your data is never stored" guarantee).
-- JD/portfolio framing for the NHSE Band-7 application lives in `docs/role_alignment.md` — keep it in
-  sync when features change.

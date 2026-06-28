@@ -34,7 +34,7 @@ NoteGuard is a **de-identification gate** for free-text NHS clinical notes. It d
 
 | Role | When | Why |
 |---|---|---|
-| Data Wrangler / IG Analyst | Before releasing notes to research or AI teams | Cannot share raw free-text; must prove zero identifier leakage |
+| Data Analyst / IG Analyst | Before releasing notes to research or AI teams | Cannot share raw free-text; must prove zero identifier leakage |
 | SDE Operator | At the Trust boundary ingestion point | Gate between Trust raw data and the shared pool |
 | Federated AI platform | Before each training round | Needs de-identified text; cannot inspect raw Trust data |
 

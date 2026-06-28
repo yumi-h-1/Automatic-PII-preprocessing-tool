@@ -1,9 +1,8 @@
 """Data-quality checks & remediation report.
 
-Band-7 data wrangling means knowing your data *before* you model it. This module
-runs the routine quality checks the JD calls for ("carry out routine data quality
-checks and remediation") over the loaded notes and reports them as a plain dict —
-consumed by the Streamlit Metrics tab and printed by ``tests/run_eval.py``.
+Knowing your data *before* you model it. This module runs routine data-quality
+checks (completeness, encoding integrity, key-field validity) over the loaded
+notes and reports them as a plain dict — printed by ``tests/run_eval.py``.
 
 It is pure-Python and importable without spaCy/Presidio (same guarantee as the
 rule layer): it only reuses ``nhs_number_is_valid`` from ``recognisers``.

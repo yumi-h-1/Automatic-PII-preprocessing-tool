@@ -2,10 +2,9 @@
 
 The NHSE ``synthetic_clinical_notes`` set has no condition/diagnosis field, so a
 "diabetes" or "cardiovascular" cohort has to be *derived* from the free text. This
-is a small, transparent clinical-concept matcher (keyword/stem lists per domain) —
-the data-linkage / "create new datasets through manipulation of data sources" task
-from the JD, done honestly: it is recall-oriented keyword tagging, not a validated
-phenotype, and we say so in the UI.
+is a small, transparent clinical-concept matcher (keyword/stem lists per domain),
+done honestly: it is recall-oriented keyword tagging, not a validated phenotype,
+and we say so in the UI.
 
 Pure-Python; no spaCy/Presidio needed to tag a cohort.
 """

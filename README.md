@@ -11,10 +11,6 @@ It ships as a small, friendly web app anyone can try: **upload your own text and
 back**, or **pick a clinical domain and download a de-identified dataset**. Uploaded data is processed
 **in memory only and never stored**.
 
-> Built to evidence the NHS England **Data Scientist (Data Wrangler), Band 7** competencies —
-> LLM exploitation/assurance, RAP, data linkage, IG (Caldicott/DPA), data quality, and the National SDE.
-> JD-to-feature map: [docs/role_alignment.md](docs/role_alignment.md).
-
 ## The app — two tabs anyone can use
 
 A short **"How it works"** walkthrough (Add data → Detect & remove → Review & download) greets you, with
@@ -50,7 +46,7 @@ layer** Presidio leaves to you:
    pure-Python rule layer + eval run even if spaCy/Presidio are unavailable, and the model auto-resolves
    `lg → sm → rules` to whatever is installed.
 5. **Data-quality report.** Completeness, encoding (mojibake) remediation, NHS-checksum validity and
-   ground-truth coverage — the routine checks a data wrangler runs before modelling (`src/quality.py`).
+   ground-truth coverage — the routine checks an analyst runs before modelling (`src/quality.py`).
 6. **Governance wrapper.** Per-note audit of what was removed + the dataset-level leakage report, mapped
    to the NHS **Five Safes**, **Caldicott Principles**, and **DPA 2018 / UK GDPR**.
 
@@ -104,7 +100,7 @@ src/
   evaluate.py      detection P/R/F1 + residual-leakage metric
   trust_demo.py    two-Trust sanitise-at-source demo
 tests/             unit tests incl. test_privacy.py (no-disk-writes) + run_eval.py (eval CLI)
-docs/              tool_card.md · report.md (ATRS) · role_alignment.md · DEPLOY_STREAMLIT_CLOUD.md
+docs/              tool_card.md · report.md (ATRS) · DEPLOY_STREAMLIT_CLOUD.md
 streamlit_app.py   the web app (Streamlit Cloud entry point)
 requirements.txt   Streamlit Cloud deps    pyproject.toml   packaging + lint/test config
 .streamlit/config.toml   NHS theme + viewer mode

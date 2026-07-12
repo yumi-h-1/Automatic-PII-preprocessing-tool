@@ -14,7 +14,7 @@ back**, or **pick a clinical domain and download a de-identified dataset**. Uplo
 ## The app — three tabs anyone can use
 
 A short **"How it works"** walkthrough (Add data → Detect & remove → Review & download) greets you, with
-a plain-English note on the optional LLM assurance pass.
+a plain-English note on the optional AI double-check.
 
 1. **De-identify your data** — paste text, or upload a `.txt` / `.csv` / `.pdf` (CSV picks the free-text
    column; multi-row files de-identify as a batch). You see the detected identifiers highlighted, a
@@ -32,8 +32,9 @@ a plain-English note on the optional LLM assurance pass.
    that re-runs the whole evaluation on the very deployment you are using.
 
 The UI follows the **NHS.UK** look (NHS Blue header, NHS palette, green action buttons). Optional
-**LLM assurance** (sidebar) adds a free, OpenAI-compatible model as a recall-oriented safety net whose
-hits are always flagged for human review — off unless a key is configured.
+**AI double-check** (sidebar) adds a free external AI model (default: Meta Llama 3.3 70B served by
+Groq; the model and source are shown in the UI) as a recall-oriented safety net whose hits are always
+flagged for human review — off unless a key is configured.
 
 ## What makes this more than "just Presidio"
 
@@ -164,7 +165,7 @@ folder and set `NOTEGUARD_DATA_DIR=/path/to/csvs`.
 
 Point <https://share.streamlit.io> at this repo with main file `streamlit_app.py`. `requirements.txt`
 ships the small spaCy model so it fits the free tier's RAM, and `build_detector` auto-uses whichever
-model is installed. To enable the optional LLM assurance pass, add a free key as a secret
+model is installed. To enable the optional AI double-check, add a free key as a secret
 (`LLM_ASSURE_API_KEY`). Full steps: [docs/DEPLOY_STREAMLIT_CLOUD.md](docs/DEPLOY_STREAMLIT_CLOUD.md).
 
 ## Data notes (found by inspecting the data, not assuming)

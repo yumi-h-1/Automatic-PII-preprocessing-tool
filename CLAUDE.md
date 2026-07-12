@@ -82,7 +82,13 @@ python -m pytest tests/ -v
   labels (NHS-synthetic vs US case-report); credential-gated/tabular sets (Kaggle) are link-only.
 - **LLM assurance is additive, off-by-default, human-reviewed** — `src/llm_assure.py` runs only when a
   free key is set, composed via `ComposedDetector` in `detect.py`; its hits are `needs_review=True` and
-  its failures are swallowed so the deterministic path can never break.
+  its failures are swallowed so the deterministic path can never break. In the UI this is labelled
+  **"AI double-check"** (owner finds "LLM assurance pass" opaque) and the sidebar shows the actual
+  model + endpoint host (`LLMAssurance().model` / `.base_url`).
+- **Tab 2 has no sample-size controls** — the owner wants the full dataset by default: the whole NHSE
+  set is scanned (`load_notes()` cached via `load_all_notes`) and the full matching cohort de-identified.
+  External catalog sets stream a fixed `EXTERNAL_FETCH_ROWS` cap (UI states it) since they can't be
+  fetched whole.
 
 ## Gotchas
 - Note text has mojibake (`Â·`) — `_fix_mojibake` runs before detection.

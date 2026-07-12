@@ -78,6 +78,15 @@ def _bridge_secrets_to_env():
 _bridge_secrets_to_env()
 
 
+# External catalog sets are streamed, not downloaded whole — this caps the fetch.
+EXTERNAL_FETCH_ROWS = 500
+
+
+@st.cache_resource(show_spinner="Loading the full NHS synthetic notes set…")
+def load_all_notes():
+    return load_notes()
+
+
 @st.cache_resource(show_spinner="Loading the de-identification engine + sample notes…")
 def load_engine():
     detector = build_detector(use_presidio=True)
@@ -358,12 +367,17 @@ detector, NOTES = load_engine()
 # ----- sidebar: de-identification mode + optional LLM assurance toggle -----
 with st.sidebar:
     st.header("Options")
-    use_llm = st.toggle("LLM assurance pass", value=False,
-                        help="Adds a free LLM as a recall-oriented safety net over the engine. "
-                             "Its hits are flagged for human review, never auto-trusted.")
+    from urllib.parse import urlparse
+
+    llm_cfg = LLMAssurance()
+    llm_host = urlparse(llm_cfg.base_url).netloc or llm_cfg.base_url
+    use_llm = st.toggle("AI double-check", value=False,
+                        help=f"A free external AI re-reads the text and flags anything the engine "
+                             f"may have missed. Model: `{llm_cfg.model}` served by {llm_host}. "
+                             "Its suggestions are marked for human review, never auto-trusted.")
     if use_llm:
-        if LLMAssurance().is_configured():
-            st.success("LLM assurance: configured")
+        if llm_cfg.is_configured():
+            st.success(f"AI double-check: ready — `{llm_cfg.model}` via {llm_host}")
         else:
             st.info("Set `LLM_ASSURE_API_KEY` (a free key) as a secret to enable. "
                     "Off until then — the engine runs deterministically.")
@@ -402,15 +416,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-with st.expander("What is the optional LLM assurance pass?"):
+with st.expander("What is the optional AI double-check?"):
     st.markdown(
         "NoteGuard removes identifiers with transparent rules and a clinical NER model. You can "
-        "optionally switch on an **LLM assurance pass** (toggle in the left sidebar): a language model "
-        "takes a *second look* and flags anything the engine might have missed.\n\n"
+        "optionally switch on the **AI double-check** (toggle in the left sidebar): a free external "
+        "AI model re-reads the text and flags anything the engine might have missed.\n\n"
         "- It is a **safety net, not the decision-maker** — its suggestions are always marked for human "
         "review, never auto-trusted.\n"
         "- It is **off by default** and stays inert unless a free API key is configured.\n"
-        "- Your text is sent to the model **only while the toggle is on**."
+        "- Your text is sent to the external model **only while the toggle is on**.\n\n"
+        f"The model in use is shown in the sidebar — currently `{LLMAssurance().model}` on an "
+        "OpenAI-compatible endpoint (default: Meta Llama 3.3 70B served by Groq's free tier; "
+        "override with `LLM_ASSURE_MODEL` / `LLM_ASSURE_BASE_URL`)."
     )
 
 tab_try, tab_domain, tab_safety = st.tabs(
@@ -464,7 +481,7 @@ with tab_try:
             st.info("Sample notes unavailable (dataset not loaded). Try Paste or Upload.")
 
     if llm_on:
-        st.caption("LLM assurance pass is on — extra spans (purple, dashed) are model "
+        st.caption("AI double-check is on — extra spans (purple, dashed) are AI "
                    "suggestions flagged for human review.")
 
     if single:
@@ -491,23 +508,21 @@ with tab_domain:
         st.caption("Provenance: **NHS-made** — NHSE synthetic clinical notes. Domain cohorts are derived "
                    "by clinical-concept keyword matching over the note text (high-recall tagging, not a "
                    "validated phenotype).")
-        n_pool = st.slider("Notes to scan", 100, 1600, 400, step=100, key="dom_pool")
-        n_cap = st.slider("Max cohort size to de-identify", 20, 500, 100, step=20, key="dom_cap")
         if st.button("Build de-identified cohort", use_container_width=True, key="dom_nhs_btn"):
-            with st.spinner("Loading notes, filtering by domain, de-identifying…"):
-                pool = load_notes(limit=n_pool)
-                cohort = filter_by_domain(pool, domain, limit=n_cap)
+            with st.spinner("Scanning all notes for the domain and de-identifying the full cohort…"):
+                pool = load_all_notes()
+                cohort = filter_by_domain(pool, domain)
                 st.session_state["dom_cohort_counts"] = domain_counts(pool)
                 st.session_state["dom_rows"] = deidentify_rows(cohort, method, det)
         if st.session_state.get("dom_cohort_counts"):
-            st.caption("Cohort sizes in the scanned pool (overlap = comorbidity): "
+            st.caption("Cohort sizes across all notes (overlap = comorbidity): "
                        + " · ".join(f"{d}: {c}" for d, c in st.session_state["dom_cohort_counts"].items()))
         if st.session_state.get("dom_rows") is not None:
             rows, counts = st.session_state["dom_rows"]
             if rows:
                 render_batch_result(rows, counts, f"noteguard_{domain.replace(' ', '_')}_nhs")
             else:
-                st.warning("No notes matched this domain in the scanned pool — try scanning more notes.")
+                st.warning("No notes matched this domain.")
 
     else:  # External public dataset
         loadable = [e for e in all_entries() if e.loadable]
@@ -518,11 +533,11 @@ with tab_domain:
         st.caption(f"Provenance: {entry.provenance}  ·  Licence: {entry.license}  ·  [dataset card]({entry.url})")
         st.warning("External datasets are **not NHS data**; provenance is labelled honestly. "
                    "They are de-identified by the same gate before download.")
-        n_scan = st.slider("Rows to fetch & scan", 50, 500, 150, step=50, key="ext_scan")
         if st.button("Fetch, filter & de-identify", use_container_width=True, key="ext_btn"):
-            with st.spinner(f"Streaming {entry.name}, filtering for '{domain}', de-identifying…"):
+            with st.spinner(f"Streaming {entry.name} (first {EXTERNAL_FETCH_ROWS} rows), "
+                            f"filtering for '{domain}', de-identifying…"):
                 try:
-                    raw = entry.loader(n_scan)
+                    raw = entry.loader(EXTERNAL_FETCH_ROWS)
                 except Exception as e:
                     st.error(f"Could not load dataset: {e}")
                     raw = []
@@ -533,7 +548,7 @@ with tab_domain:
             if rows:
                 render_batch_result(rows, counts, f"noteguard_{domain.replace(' ', '_')}_{entry.key}")
             else:
-                st.warning("No rows matched this domain in the fetched sample — fetch more rows.")
+                st.warning(f"No rows matched this domain in the first {EXTERNAL_FETCH_ROWS} rows.")
         if linkonly:
             with st.expander("More public datasets (reference / link-only)"):
                 for e in linkonly:

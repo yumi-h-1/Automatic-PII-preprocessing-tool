@@ -13,8 +13,7 @@ back**, or **pick a clinical domain and download a de-identified dataset**. Uplo
 
 ## The app — three tabs anyone can use
 
-A short **"How it works"** walkthrough (Add data → Detect & remove → Review & download) greets you, with
-a plain-English note on the optional AI double-check.
+A short **"How it works"** walkthrough (Add data → Detect & remove → Review & download) greets you.
 
 1. **De-identify your data** — paste text, or upload a `.txt` / `.csv` / `.pdf` (CSV picks the free-text
    column; multi-row files de-identify as a batch). You see the detected identifiers highlighted, a

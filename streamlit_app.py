@@ -372,9 +372,11 @@ with st.sidebar:
     llm_cfg = LLMAssurance()
     llm_host = urlparse(llm_cfg.base_url).netloc or llm_cfg.base_url
     use_llm = st.toggle("AI double-check", value=False,
-                        help=f"A free external AI re-reads the text and flags anything the engine "
-                             f"may have missed. Model: `{llm_cfg.model}` served by {llm_host}. "
-                             "Its suggestions are marked for human review, never auto-trusted.")
+                        help=f"A free external AI model (`{llm_cfg.model}` served by {llm_host}) "
+                             "re-reads the text and flags anything the engine may have missed. "
+                             "Its suggestions are always marked for human review, never auto-trusted. "
+                             "Off unless a free API key is configured, and your text is sent to the "
+                             "model only while this toggle is on.")
     if use_llm:
         if llm_cfg.is_configured():
             st.success(f"AI double-check: ready — `{llm_cfg.model}` via {llm_host}")
@@ -415,20 +417,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-with st.expander("What is the optional AI double-check?"):
-    st.markdown(
-        "NoteGuard removes identifiers with transparent rules and a clinical NER model. You can "
-        "optionally switch on the **AI double-check** (toggle in the left sidebar): a free external "
-        "AI model re-reads the text and flags anything the engine might have missed.\n\n"
-        "- It is a **safety net, not the decision-maker** — its suggestions are always marked for human "
-        "review, never auto-trusted.\n"
-        "- It is **off by default** and stays inert unless a free API key is configured.\n"
-        "- Your text is sent to the external model **only while the toggle is on**.\n\n"
-        f"The model in use is shown in the sidebar — currently `{LLMAssurance().model}` on an "
-        "OpenAI-compatible endpoint (default: Meta Llama 3.3 70B served by Groq's free tier; "
-        "override with `LLM_ASSURE_MODEL` / `LLM_ASSURE_BASE_URL`)."
-    )
 
 tab_try, tab_domain, tab_safety = st.tabs(
     ["De-identify your data", "Get data by domain", "How safe is it?"])
@@ -514,10 +502,12 @@ with tab_domain:
                 cohort = filter_by_domain(pool, domain)
                 st.session_state["dom_cohort_counts"] = domain_counts(pool)
                 st.session_state["dom_rows"] = deidentify_rows(cohort, method, det)
+                st.session_state["dom_rows_for"] = domain    # invalidate on domain change
         if st.session_state.get("dom_cohort_counts"):
             st.caption("Cohort sizes across all notes (overlap = comorbidity): "
                        + " · ".join(f"{d}: {c}" for d, c in st.session_state["dom_cohort_counts"].items()))
-        if st.session_state.get("dom_rows") is not None:
+        if (st.session_state.get("dom_rows") is not None
+                and st.session_state.get("dom_rows_for") == domain):
             rows, counts = st.session_state["dom_rows"]
             if rows:
                 render_batch_result(rows, counts, f"noteguard_{domain.replace(' ', '_')}_nhs")
@@ -543,7 +533,9 @@ with tab_domain:
                     raw = []
                 matched = [(rid, txt) for rid, txt in raw if note_matches_domain(txt, domain)]
                 st.session_state["ext_rows"] = deidentify_rows(matched, method, det)
-        if st.session_state.get("ext_rows") is not None:
+                st.session_state["ext_rows_for"] = (domain, entry.key)  # invalidate on change
+        if (st.session_state.get("ext_rows") is not None
+                and st.session_state.get("ext_rows_for") == (domain, entry.key)):
             rows, counts = st.session_state["ext_rows"]
             if rows:
                 render_batch_result(rows, counts, f"noteguard_{domain.replace(' ', '_')}_{entry.key}")

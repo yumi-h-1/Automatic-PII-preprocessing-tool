@@ -11,7 +11,7 @@ It ships as a small, friendly web app anyone can try: **upload your own text and
 back**, or **pick a clinical domain and download a de-identified dataset**. Uploaded data is processed
 **in memory only and never stored**.
 
-## The app — two tabs anyone can use
+## The app — three tabs anyone can use
 
 A short **"How it works"** walkthrough (Add data → Detect & remove → Review & download) greets you, with
 a plain-English note on the optional LLM assurance pass.
@@ -24,6 +24,12 @@ a plain-English note on the optional LLM assurance pass.
 2. **Get data by domain** — choose a clinical domain (diabetes, cardiovascular, respiratory, mental
    health, cancer, renal) and download **de-identified** data from the NHS synthetic notes (primary) or
    a curated catalog of public free-text datasets. Every record passes through the same gate first.
+3. **How safe is it?** — the evidence, written for a non-specialist. The metric we lead with is the
+   **miss rate (false negatives)**: of the identifiers we *know* are in the test notes, how many are
+   still visible after de-identification? The tab shows the published snapshot
+   ([assets/metrics_snapshot.json](assets/metrics_snapshot.json), aggregate numbers only), where the
+   remaining risk lives by identifier type — and a **"don't take our word for it" live re-check**
+   that re-runs the whole evaluation on the very deployment you are using.
 
 The UI follows the **NHS.UK** look (NHS Blue header, NHS palette, green action buttons). Optional
 **LLM assurance** (sidebar) adds a free, OpenAI-compatible model as a recall-oriented safety net whose
@@ -83,6 +89,26 @@ The rules→engine drop is the headline: it shows, with numbers, exactly what th
 > removing a clinician's name (not in the tables) counts here as a false positive. **Recall and leakage
 > are the sound, headline metrics.**
 
+The app's **How safe is it?** tab presents these numbers for non-specialists and re-measures them live
+on the running deployment. The published snapshot it reads is
+[assets/metrics_snapshot.json](assets/metrics_snapshot.json) — aggregates only, refreshed with
+`python tests/run_eval.py --compare --snapshot`.
+
+## Runs where the NHS already works
+
+The demo is hosted on Streamlit for zero-cost public access, but the engine is a plain, pip-installable
+Python package with **no service dependencies and no external calls** — so the same pipeline drops into
+the platforms NHS teams already use:
+
+- **Microsoft Fabric / Azure Databricks** — a lakehouse notebook that de-identifies a table in place:
+  [integrations/fabric_deidentify.ipynb](integrations/fabric_deidentify.ipynb)
+- **Palantir Foundry (the Federated Data Platform)** — the pipeline as a `transforms-python` transform:
+  [integrations/foundry_transform.py](integrations/foundry_transform.py)
+- **Secure Data Environments / Trust RAP pipelines** — ordinary Python + the bundled evaluation harness
+  for a recurring miss-rate report
+
+Details and governance notes: [docs/NHS_PLATFORMS.md](docs/NHS_PLATFORMS.md).
+
 ## Project layout (Gold-RAP "analysis as a product")
 
 ```
@@ -100,7 +126,9 @@ src/
   evaluate.py      detection P/R/F1 + residual-leakage metric
   trust_demo.py    two-Trust sanitise-at-source demo
 tests/             unit tests incl. test_privacy.py (no-disk-writes) + run_eval.py (eval CLI)
-docs/              tool_card.md · report.md (ATRS) · DEPLOY_STREAMLIT_CLOUD.md
+assets/            metrics_snapshot.json — published eval aggregates (read by the safety tab)
+integrations/      fabric_deidentify.ipynb (Fabric/Databricks) · foundry_transform.py (Foundry/FDP)
+docs/              tool_card.md · report.md (ATRS) · NHS_PLATFORMS.md · DEPLOY_STREAMLIT_CLOUD.md
 streamlit_app.py   the web app (Streamlit Cloud entry point)
 requirements.txt   Streamlit Cloud deps    pyproject.toml   packaging + lint/test config
 .streamlit/config.toml   NHS theme + viewer mode
@@ -122,8 +150,9 @@ source .venv/bin/activate            # Windows: .\.venv\Scripts\Activate.ps1
 pip install -e ".[app,dev]"
 python -m spacy download en_core_web_lg   # or en_core_web_sm for a lighter run
 
-streamlit run streamlit_app.py            # the app (De-identify · Get data by domain)
+streamlit run streamlit_app.py            # the app (De-identify · Get data by domain · How safe is it?)
 python tests/run_eval.py --compare --limit 300   # reproduce the leakage table + data-quality report
+python tests/run_eval.py --compare --snapshot    # …and refresh the app's published metrics snapshot
 python -m src.trust_demo                          # two-Trust sanitise-at-source demo
 pytest -q                                         # unit tests
 ```

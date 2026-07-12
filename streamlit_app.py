@@ -5,6 +5,8 @@ Run from the repo root:  streamlit run streamlit_app.py
 Tabs:
   1. De-identify your data — upload a note/CSV/PDF, get de-identified data back. Nothing is stored.
   2. Get data by domain   — pick a clinical domain, download de-identified data (NHS + public sources).
+  3. How safe is it?      — the missed-identifier (false-negative) evidence, in plain English, with a
+                            live re-check that runs on this very deployment.
 
 Built on the NoteGuard package (src/) — pluggable detectors + patient-consistent transforms.
 """
@@ -27,6 +29,7 @@ from src.catalog import all_entries  # noqa: E402
 from src.cohorts import DOMAINS, domain_counts, filter_by_domain, note_matches_domain  # noqa: E402
 from src.data import load_notes  # noqa: E402
 from src.detect import ComposedDetector, build_detector  # noqa: E402
+from src.evaluate import evaluate  # noqa: E402
 from src.ingest import SUPPORTED, csv_columns, records_from_upload  # noqa: E402
 from src.llm_assure import LLMAssurance  # noqa: E402
 from src.pipeline import Pipeline  # noqa: E402
@@ -43,6 +46,19 @@ ENTITY_COLORS = {
 # NHS-brand categorical palette for the donut chart
 NHS_PALETTE = ["#005EB8", "#0072CE", "#41B6E6", "#00A499", "#007F3B",
                "#330072", "#7C2855", "#ED8B00", "#8A1538"]
+
+NHS_BLUE, NHS_RED, NHS_GREEN = "#005EB8", "#DA291C", "#007f3b"
+
+# Lay-reader names for entity types on the safety tab (plural, no jargon)
+FRIENDLY_TYPE = {
+    "PERSON": "Names", "UK_NHS": "NHS numbers", "DATE_TIME": "Dates of birth",
+    "UK_POSTCODE": "Postcodes", "LOCATION": "Places", "GMC": "GMC numbers",
+    "NMC": "NMC numbers", "NHS_ODS": "ODS codes", "RECORD_ID": "Record IDs",
+    "PHONE_NUMBER": "Phone numbers", "EMAIL_ADDRESS": "Email addresses",
+    "UK_NINO": "NI numbers", "URL": "Web addresses",
+}
+
+SNAPSHOT_PATH = REPO / "assets" / "metrics_snapshot.json"
 
 st.set_page_config(page_title="NoteGuard", layout="wide")
 
@@ -216,6 +232,75 @@ def download_rows(rows: list[dict], stem: str):
                        file_name=f"{stem}.csv", mime="text/csv", use_container_width=True)
 
 
+# ---------------------------------------------------------------- safety-tab components
+@st.cache_data
+def load_snapshot() -> dict | None:
+    """Published evaluation snapshot (aggregate numbers only — no note text).
+    Regenerate with: python tests/run_eval.py --compare --snapshot"""
+    try:
+        return json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def safety_tiles(leak: dict):
+    """The headline, as three numbers a non-specialist can read."""
+    known = leak["total_known_pii_occurrences"]
+    missed = leak["residual_leaks_after_sanitisation"]
+    hidden_pct = 100 - leak["leakage_rate_pct"]
+    missed_color = NHS_RED if missed else NHS_GREEN
+    st.markdown(
+        f"""
+        <div class="stat-grid">
+          <div class="stat-card"><div class="num" style="color:{NHS_BLUE}">{known:,}</div>
+            <p>identifiers we knew were hidden in the notes</p></div>
+          <div class="stat-card"><div class="num" style="color:{missed_color}">{missed:,}</div>
+            <p>still visible after de-identification — the misses we count</p></div>
+          <div class="stat-card"><div class="num" style="color:{NHS_GREEN}">{hidden_pct:.1f}%</div>
+            <p>successfully removed or disguised</p></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def caught_missed_chart(per_entity: dict):
+    """Per identifier type at the detection stage: caught (blue) vs missed (red)."""
+    rows = []
+    for et, m in per_entity.items():
+        support = m.get("support", 0)
+        if not support:
+            continue
+        caught = m.get("caught", round(m.get("recall", 0) * support))
+        rows.append({"type": FRIENDLY_TYPE.get(et, redaction_label(et)),
+                     "status": "Caught", "count": caught, "support": support})
+        rows.append({"type": FRIENDLY_TYPE.get(et, redaction_label(et)),
+                     "status": "Missed", "count": support - caught, "support": support})
+    if not rows:
+        st.info("No known identifiers in this sample.")
+        return
+    df = pd.DataFrame(rows)
+    order = (df.groupby("type")["support"].first().sort_values(ascending=False).index.tolist())
+    chart = (
+        alt.Chart(df)
+        .mark_bar(height=22, stroke="#ffffff", strokeWidth=2)
+        .encode(
+            y=alt.Y("type:N", sort=order, title=None),
+            x=alt.X("count:Q", title="Known identifier occurrences"),
+            color=alt.Color("status:N",
+                            scale=alt.Scale(domain=["Caught", "Missed"],
+                                            range=[NHS_BLUE, NHS_RED]),
+                            legend=alt.Legend(title=None, orient="top")),
+            order=alt.Order("status:N", sort="ascending"),
+            tooltip=[alt.Tooltip("type:N", title="Identifier type"),
+                     alt.Tooltip("status:N", title="At detection"),
+                     alt.Tooltip("count:Q", title="Occurrences")],
+        )
+        .properties(height=32 * df["type"].nunique() + 40)
+    )
+    st.altair_chart(chart, use_container_width=True)
+
+
 st.markdown(
     """
     <style>
@@ -241,7 +326,23 @@ st.markdown(
       .step-card p { margin:0; font-size:13.5px; color:#4c6272; line-height:1.45; }
       .step-card svg { width:28px; height:28px; stroke:#005EB8; fill:none; stroke-width:2;
                        stroke-linecap:round; stroke-linejoin:round; }
-      @media (max-width:800px){ .how-grid { grid-template-columns:1fr; } }
+      /* Safety-tab stat tiles + mistake-type cards */
+      .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:10px 0 6px; }
+      .stat-card { background:#f0f4f5; border-radius:12px; padding:18px; border:1px solid #e8edee;
+                   text-align:center; }
+      .stat-card .num { font-size:40px; font-weight:700; line-height:1.1; }
+      .stat-card p { margin:6px 0 0; font-size:13.5px; color:#4c6272; line-height:1.4; }
+      .mistake-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:10px 0 6px; }
+      .mistake-card { border-radius:12px; padding:16px 18px; border:1px solid #e8edee; }
+      .mistake-card h4 { margin:0 0 6px; font-size:15.5px; color:#212b32; }
+      .mistake-card p { margin:0; font-size:13.5px; color:#4c6272; line-height:1.5; }
+      .platform-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:12px 0 6px; }
+      .platform-card { background:#ffffff; border:1px solid #d8dde0; border-radius:12px; padding:16px 18px; }
+      .platform-card .where { color:#005EB8; font-weight:700; font-size:12px; letter-spacing:.6px; }
+      .platform-card h4 { margin:8px 0 4px; font-size:15.5px; color:#212b32; }
+      .platform-card p { margin:0; font-size:13px; color:#4c6272; line-height:1.5; }
+      @media (max-width:800px){ .how-grid, .stat-grid, .mistake-grid, .platform-grid
+                                { grid-template-columns:1fr; } }
     </style>
     <div class="nhs-header"><span class="brand">NoteGuard</span></div>
     <p class="nhs-tagline">Every clinical note is someone's story — NoteGuard keeps the person safe,
@@ -312,7 +413,8 @@ with st.expander("What is the optional LLM assurance pass?"):
         "- Your text is sent to the model **only while the toggle is on**."
     )
 
-tab_try, tab_domain = st.tabs(["De-identify your data", "Get data by domain"])
+tab_try, tab_domain, tab_safety = st.tabs(
+    ["De-identify your data", "Get data by domain", "How safe is it?"])
 
 # ---------------------------------------------------------------- Tab 1: de-identify your data
 with tab_try:
@@ -436,3 +538,140 @@ with tab_domain:
             with st.expander("More public datasets (reference / link-only)"):
                 for e in linkonly:
                     st.markdown(f"- **[{e.name}]({e.url})** — {e.provenance} · {e.license}")
+
+# ---------------------------------------------------------------- Tab 3: how safe is it?
+with tab_safety:
+    st.markdown(
+        "For a de-identification tool the question that matters most is not *\"how accurate is it?\"* "
+        "— it is **\"what did it miss?\"** A tool can look impressive and still let one real name "
+        "slip through. So the number we hold ourselves to is the **miss rate**: of the identifiers we "
+        "*know* are in the notes, how many are still visible after de-identification?"
+    )
+    st.markdown(
+        """
+        <div class="mistake-grid">
+          <div class="mistake-card" style="background:#fdf1f0;border-color:#f3c8c4;">
+            <h4>A missed identifier — the mistake we count</h4>
+            <p>A real name or NHS number stays visible in the output (a <em>false negative</em>).
+            This is a privacy risk, so we measure it, publish it, and design the engine to keep it
+            as close to zero as possible.</p>
+          </div>
+          <div class="mistake-card" style="background:#eef5f0;border-color:#c5ddcd;">
+            <h4>Over-removal — the mistake we accept</h4>
+            <p>A harmless word gets redacted by mistake (a <em>false positive</em>). That costs a
+            little data quality but harms no one — a fair trade for fewer misses.</p>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    snapshot = load_snapshot()
+    if snapshot is None:
+        st.warning("No published snapshot found (assets/metrics_snapshot.json). "
+                   "Generate one with `python tests/run_eval.py --compare --snapshot`, "
+                   "or use the live check below.")
+    else:
+        meta = snapshot.get("_meta", {})
+        shipping = snapshot.get("presidio+rules") or next(
+            (v for k, v in snapshot.items() if not k.startswith("_")), None)
+
+        st.markdown("#### The test, in one sentence")
+        st.markdown(
+            f"We took **{meta.get('notes_evaluated', '?')} synthetic NHS notes** where every "
+            "identifier is already known (the dataset keeps them in structured tables), ran "
+            "NoteGuard, and then checked the output for every known identifier — counting each "
+            "one still visible as a **miss**."
+        )
+        if shipping:
+            safety_tiles(shipping["leakage"])
+        st.caption(
+            f"Measured on {meta.get('generated', '?')} · dataset: {meta.get('dataset', '?')} "
+            f"(synthetic — no real patients) · spaCy model: {meta.get('spacy_model', '?')} · "
+            f"transform: {meta.get('transform', '?')}. "
+            "Reproduce with `python tests/run_eval.py --compare`."
+        )
+
+        if shipping:
+            st.markdown("#### What gets caught, what gets missed — by identifier type")
+            st.markdown(
+                "At the *detection* stage, occurrence by occurrence (full engine). Missing a name "
+                "once here does not always mean it leaks — the final-output check above is the "
+                "authoritative privacy number — but this shows where the remaining risk lives:"
+            )
+            caught_missed_chart(shipping["detection"]["per_entity"])
+
+    with st.expander("Honest caveats — read before quoting these numbers"):
+        st.markdown(
+            "- **The notes are synthetic** (NHSE-published test data). No real patient data is used "
+            "or needed for this evaluation.\n"
+            "- **The known-identifier list comes from the dataset's structured tables**, so the miss "
+            "rate and recall are sound. Precision is a conservative lower bound: correctly removing "
+            "a clinician's name that is *not* in the tables counts against us as over-removal.\n"
+            "- **Low-confidence detections are redacted anyway** and flagged for human review — the "
+            "engine fails safe.\n"
+            "- The published snapshot was measured with the full-size model. A lighter deployment "
+            "(like this free-tier demo) may run the small model — use the live check below to "
+            "measure *this* deployment rather than trust the snapshot."
+        )
+
+    st.markdown("#### Don't take our word for it — re-run the check here")
+    st.markdown(
+        "This runs the same evaluation on the deployment you are using right now, with the model "
+        "it actually has loaded. Aggregate numbers only — no note text is shown or stored."
+    )
+    n_eval = st.slider("Notes to test", 50, 300, 100, step=50, key="live_eval_n")
+    if st.button("Run the live check", use_container_width=True, key="live_eval_btn"):
+        with st.spinner(f"De-identifying {n_eval} notes and counting misses…"):
+            try:
+                recs = load_notes(limit=n_eval)
+                live = evaluate(recs, detector, REDACTION)  # deterministic engine, no LLM
+                st.session_state["live_eval"] = live.to_dict()
+            except Exception as e:
+                st.error(f"Could not run the live check (dataset unavailable?): {e}")
+    if st.session_state.get("live_eval"):
+        live = st.session_state["live_eval"]
+        model = getattr(detector, "spacy_model", None)
+        st.caption(f"Live result from this deployment — detector: {live.get('detector', '?')}"
+                   + (f" · spaCy model: {model}" if model else "") + " · transform: redaction.")
+        safety_tiles(live["leakage"])
+        caught_missed_chart(live["detection"]["per_entity"])
+
+# ---------------------------------------------------------------- runs where the NHS works
+st.markdown("---")
+st.markdown("#### Built to run where NHS teams already work")
+st.markdown(
+    "This public demo is hosted on Streamlit so anyone can try it at zero cost — but the engine is "
+    "a plain, pip-installable Python package with no service dependencies, so the same pipeline "
+    "drops into the platforms NHS analysts already use:"
+)
+st.markdown(
+    """
+    <div class="platform-grid">
+      <div class="platform-card">
+        <div class="where">MICROSOFT FABRIC / AZURE DATABRICKS</div>
+        <h4>Lakehouse notebook</h4>
+        <p>A ready-to-run notebook de-identifies a lakehouse table in place —
+        <a href="https://github.com/yumi-h-1/Automatic-PII-preprocessing-tool/blob/main/integrations/fabric_deidentify.ipynb">
+        integrations/fabric_deidentify.ipynb</a>.</p>
+      </div>
+      <div class="platform-card">
+        <div class="where">PALANTIR FOUNDRY (FDP)</div>
+        <h4>Foundry transform</h4>
+        <p>The same pipeline as a Foundry code-repository transform, for the NHS Federated Data
+        Platform —
+        <a href="https://github.com/yumi-h-1/Automatic-PII-preprocessing-tool/blob/main/integrations/foundry_transform.py">
+        integrations/foundry_transform.py</a>.</p>
+      </div>
+      <div class="platform-card">
+        <div class="where">NHS SECURE DATA ENVIRONMENTS</div>
+        <h4>Sanitise at source</h4>
+        <p>Runs inside a Trust's own governance boundary so only de-identified text leaves — the
+        platform notes are in
+        <a href="https://github.com/yumi-h-1/Automatic-PII-preprocessing-tool/blob/main/docs/NHS_PLATFORMS.md">
+        docs/NHS_PLATFORMS.md</a>.</p>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)

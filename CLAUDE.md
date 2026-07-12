@@ -1,9 +1,10 @@
 # NoteGuard — NHS Clinical-Note PII Sanitisation
 
 Sanitise-at-source: detect + de-identify PII in free-text NHS clinical notes so only de-identified
-data leaves a Trust. Ships a public two-tab demo — (1) upload a note/CSV/PDF and get de-identified
+data leaves a Trust. Ships a public three-tab demo — (1) upload a note/CSV/PDF and get de-identified
 data back, processed in memory only; (2) pick a clinical domain and download de-identified data from
-NHS + public sources — plus measured residual leakage and Five Safes / Caldicott / DPA governance.
+NHS + public sources; (3) "How safe is it?" — lay-reader false-negative (miss-rate) evidence + a live
+re-check — plus measured residual leakage and Five Safes / Caldicott / DPA governance.
 
 ## Commands
 ```bash
@@ -12,8 +13,9 @@ python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -e ".[app,dev]"; python -m spacy download en_core_web_lg
 
 python tests/run_eval.py --compare --limit 300   # VERIFIABLE SIGNAL: rules vs presidio+rules -> outputs/results.json
+python tests/run_eval.py --compare --snapshot    # …plus refresh assets/metrics_snapshot.json (committed; read by the app)
 python -m src.trust_demo                          # two NHS Trusts share only de-identified data -> outputs/
-streamlit run streamlit_app.py                    # demo (De-identify / Get-by-domain / Metrics / Governance / Two-Trust)
+streamlit run streamlit_app.py                    # demo (De-identify / Get-by-domain / How-safe-is-it)
 python -m pytest tests/ -v
 
 # Offline data: set NOTEGUARD_DATA_DIR to a folder holding the 3 CSVs (else auto-downloaded from HF).
@@ -28,8 +30,13 @@ python -m pytest tests/ -v
   leakage) · `quality` (data-quality report) · `ingest` (in-memory bytes→records, no disk) ·
   `cohorts` (clinical-domain keyword tagging) · `catalog` (public dataset registry) ·
   `llm_assure` (optional OpenAI-compatible LLM assurance) · `pipeline` · `trust_demo`.
-- `tests/run_eval.py` CLI · `streamlit_app.py` demo (5 tabs: De-identify · Get-by-domain · Metrics ·
-  Governance · Two-Trust) · `tests/` mirror `src/`. Packaged via `pyproject.toml`.
+- `tests/run_eval.py` CLI · `streamlit_app.py` demo (3 tabs: De-identify · Get-by-domain ·
+  How-safe-is-it) · `tests/` mirror `src/`. Packaged via `pyproject.toml`.
+- `assets/metrics_snapshot.json` — published eval aggregates (NO note text; safe to commit). The
+  safety tab reads it; refresh with `run_eval.py --compare --snapshot` after detection changes.
+- `integrations/` — illustrative platform code, NOT part of the package or tests: Fabric/Databricks
+  notebook + Palantir Foundry (FDP) transform (`spark` is platform-injected; lint-relaxed via
+  per-file-ignores in `pyproject.toml`). Platform story: `docs/NHS_PLATFORMS.md`.
 - LLM assurance is OFF unless `LLM_ASSURE_API_KEY` is set; never trusted blindly (spans flagged
   `needs_review`). Tab 1 processes uploads in memory only — `tests/test_privacy.py` asserts no disk writes.
 
@@ -56,9 +63,18 @@ python -m pytest tests/ -v
   are redacted but flagged `needs_review=True` for IG analyst review before SDE pool admission.
 - **Places recall** — low recall (0–0.7) was mostly generic "ward"/"bay" in GT (now filtered by
   `_GENERIC`); NHS site names are caught by the `_SITE_RE` LOCATION rule in recognisers.
-- **Two-tab public demo** — Tab 1 (De-identify) ingests uploads (txt/csv/pdf) **in memory only**
+- **Three-tab public demo** — Tab 1 (De-identify) ingests uploads (txt/csv/pdf) **in memory only**
   (`src/ingest.py`, no disk writes); Tab 2 (Get-by-domain) serves de-identified cohorts from NHS notes
   (primary) + a public catalog. Both reuse `Pipeline` + one shared `PseudonymVault` per batch.
+- **Tab 3 leads with false negatives, for lay readers** — the headline metric is the miss rate
+  (known identifiers still visible after sanitisation = residual leakage), NOT accuracy/F1. It shows
+  the committed snapshot, per-type caught/missed, honest caveats, and a live re-check
+  (`src/evaluate.py` on `load_notes`, deterministic engine, no LLM) so a constrained deploy
+  (sm model) measures itself instead of quoting the lg snapshot. The owner explicitly does NOT
+  want a rules-only vs full-engine comparison chart in this tab (removed 2026-07-13).
+- **Demo hosting ≠ product runtime** — the public demo stays on free Streamlit Cloud; NHS-platform
+  familiarity is shown via `integrations/` (Fabric/Databricks notebook, Foundry/FDP transform) and
+  the "Built to run where NHS teams already work" strip in the app. No paid Azure hosting.
 - **Domain cohorts are keyword tagging, NOT validated phenotypes** — `src/cohorts.py` derives domains
   (diabetes/cardiovascular/…) by clinical-concept substring matching because the NHSE set has no
   condition field. High-recall, stated honestly in the UI. Same matcher filters external catalog rows.

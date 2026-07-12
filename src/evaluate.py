@@ -159,6 +159,8 @@ class EvalResult:
                         "recall": round(c.recall, 4),
                         "f1": round(c.f1, 4),
                         "support": c.tp + c.fn,
+                        "caught": c.tp,
+                        "missed": c.fn,
                     }
                     for et, c in sorted(self.per_entity.items())
                 },

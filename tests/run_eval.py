@@ -3,8 +3,10 @@
     python tests/run_eval.py --limit 300            # quick run
     python tests/run_eval.py --method pseudonym     # leakage under pseudonymisation
     python tests/run_eval.py --compare              # rules-only vs presidio+rules
+    python tests/run_eval.py --compare --snapshot   # also refresh assets/metrics_snapshot.json
+                                                    # (aggregates only — the app's safety tab reads it)
 
-Writes outputs/results.json (consumed by the Streamlit metrics panel) and prints a summary.
+Writes outputs/results.json and prints a summary.
 This is the pipeline's evaluation entry point; it lives under tests/ alongside the unit tests.
 """
 from __future__ import annotations
@@ -13,6 +15,7 @@ import argparse
 import json
 import logging
 import sys
+from datetime import date
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -51,6 +54,8 @@ def main() -> None:
     ap.add_argument("--no-presidio", action="store_true", help="rules only")
     ap.add_argument("--compare", action="store_true", help="rules vs presidio+rules")
     ap.add_argument("--out", default=None, help="output JSON path (default: outputs/results.json)")
+    ap.add_argument("--snapshot", action="store_true",
+                    help="also write assets/metrics_snapshot.json (committed; read by the app)")
     args = ap.parse_args()
 
     logger.info("loading notes (limit=%s) ...", args.limit)
@@ -61,23 +66,43 @@ def main() -> None:
     print_quality_report(data_quality_report(records))
 
     runs: dict[str, EvalResult] = {}
+    spacy_model: str | None = None
     if args.compare:
         print("\n=== rules-only ===")
         runs["rules"] = evaluate(records, RuleDetector(), args.method)
         _print_summary(runs["rules"])
         print("\n=== presidio+rules (shipping headline detector) ===")
-        runs["presidio+rules"] = evaluate(records, build_detector(True), args.method)
+        engine = build_detector(True)
+        spacy_model = getattr(engine, "spacy_model", None)
+        runs["presidio+rules"] = evaluate(records, engine, args.method)
         _print_summary(runs["presidio+rules"])
     else:
         det = RuleDetector() if args.no_presidio else build_detector(True)
+        spacy_model = getattr(det, "spacy_model", None)
         res = evaluate(records, det, args.method)
         _print_summary(res)
         runs[res.detector_name] = res
 
+    # aggregate metrics only — safe to publish (no note text, no identifiers)
+    payload = {
+        "_meta": {
+            "generated": date.today().isoformat(),
+            "dataset": "NHSEDataScience/synthetic_clinical_notes",
+            "notes_evaluated": max((r.notes for r in runs.values()), default=0),
+            "spacy_model": spacy_model,
+            "transform": args.method,
+        },
+        **{n: r.to_dict() for n, r in runs.items()},
+    }
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = Path(args.out) if args.out else OUTPUT_DIR / "results.json"
-    out_path.write_text(json.dumps({n: r.to_dict() for n, r in runs.items()}, indent=2), encoding="utf-8")
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     logger.info("wrote %s", out_path)
+    if args.snapshot:
+        snap = REPO / "assets" / "metrics_snapshot.json"
+        snap.parent.mkdir(parents=True, exist_ok=True)
+        snap.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        logger.info("wrote %s (commit this to publish the numbers in the app)", snap)
 
 
 if __name__ == "__main__":

@@ -68,6 +68,7 @@ class PresidioDetector:
             "models": [{"lang_code": "en", "model_name": spacy_model}],
         })
         self.engine = AnalyzerEngine(nlp_engine=provider.create_engine())
+        self.spacy_model = spacy_model
         self.score_threshold = score_threshold
         self.review_threshold = review_threshold
         self._register_uk_recognisers()

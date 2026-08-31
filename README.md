@@ -76,18 +76,28 @@ demo** (`src/trust_demo.py`: each Trust cleans locally; only de-identified text 
 ## Results — residual leakage drops as we layer detection
 
 *Known identifiers (joined from the structured tables) still present after sanitisation. Measured on all
-**1,602 notes** (1,027 known-PII occurrences). Reproduce with `python tests/run_eval.py --compare`.*
+**1,602 notes** (1,027 known-PII occurrences), `en_core_web_lg`, redaction, 2026-08-31. Reproduce with
+`python tests/run_eval.py --compare`.*
 
 | Detector | NHS number F1 | PERSON recall | **Residual leakage** |
 |---|---|---|---|
-| rules only | 0.98 | 0.00 | **74.8 %** |
-| **presidio + rules** (shipping) | **0.99** | **0.68** | **8.5 %** |
+| rules only | 0.98 | 0.00 | **74.9 %** |
+| **presidio + rules** (shipping) | **0.98** | **0.69** | **4.7 %** |
+
+These are the same numbers the app's safety tab shows, because both come from one run:
+[assets/metrics_snapshot.json](assets/metrics_snapshot.json). Re-run the eval and the snapshot
+together (`--snapshot`) so the two never drift apart.
 
 The rules→engine drop is the headline: it shows, with numbers, exactly what the NER engine buys you.
 
-> Precision is reported against *structured* PII only, so it is a conservative lower bound — correctly
-> removing a clinician's name (not in the tables) counts here as a false positive. **Recall and leakage
-> are the sound, headline metrics.**
+> Precision is reported against *structured* PII only, so it is a conservative lower bound — the
+> ground truth is the patient tables, so correctly removing a clinician's name (which is *not* in
+> those tables) is scored as a false positive. That is why overall precision reads 0.12–0.19: most of
+> those "false positives" are real identifiers the tables simply don't list. **Recall and leakage are
+> the sound, headline metrics.**
+>
+> Over-redaction is the safe direction. Precision costs you utility. Recall costs you privacy. Those
+> aren't symmetric.
 
 The app's **How safe is it?** tab presents these numbers for non-specialists and re-measures them live
 on the running deployment. The published snapshot it reads is
@@ -151,8 +161,8 @@ pip install -e ".[app,dev]"
 python -m spacy download en_core_web_lg   # or en_core_web_sm for a lighter run
 
 streamlit run streamlit_app.py            # the app (De-identify · Get data by domain · How safe is it?)
-python tests/run_eval.py --compare --limit 300   # reproduce the leakage table + data-quality report
-python tests/run_eval.py --compare --snapshot    # …and refresh the app's published metrics snapshot
+python tests/run_eval.py --compare                # full-dataset leakage table + data-quality report
+python tests/run_eval.py --compare --snapshot     # …and refresh the app's published metrics snapshot
 python -m src.trust_demo                          # two-Trust sanitise-at-source demo
 pytest -q                                         # unit tests
 ```

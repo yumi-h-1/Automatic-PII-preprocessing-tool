@@ -72,9 +72,9 @@
 | Component | Task | Method | Measured (synthetic, 1,602 notes) |
 |---|---|---|---|
 | Rule recognisers | NHS number, postcode, date, phone, email, GMC/NMC/ODS, NINO, vehicle, UUID | regex + Modulus-11 checksum + context anchors (name-agnostic) | NHS number F1 ≈ 0.99 |
-| Presidio NER | `PERSON`, `LOCATION` | spaCy `en_core_web_lg`, score-thresholded, unioned with rules | PERSON recall ≈ 0.68 |
+| Presidio NER | `PERSON`, `LOCATION` | spaCy `en_core_web_lg`, score-thresholded, unioned with rules | PERSON recall ≈ 0.69 |
 | Transform | redact / pseudonymise | per-entity policy; Faker(en_GB) vault; per-patient DOB shift | — |
-| **End-to-end** | residual leakage after sanitisation | known-PII oracle from structured tables | **rules 74.8% → presidio+rules 8.5%** |
+| **End-to-end** | residual leakage after sanitisation | known-PII oracle from structured tables | **rules 74.9% → presidio+rules 4.7%** |
 
 Precision is a conservative lower bound (correctly removing PII absent from the tables counts as a
 false positive). Recall and leakage are the sound headline metrics.

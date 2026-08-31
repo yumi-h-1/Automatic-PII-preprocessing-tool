@@ -1,10 +1,13 @@
 """Run the NoteGuard evaluation over the NHSE synthetic dataset.
 
-    python tests/run_eval.py --limit 300            # quick run
+    python tests/run_eval.py --limit 300            # quick run on a 300-note sample
     python tests/run_eval.py --method pseudonym     # leakage under pseudonymisation
-    python tests/run_eval.py --compare              # rules-only vs presidio+rules
+    python tests/run_eval.py --compare              # rules-only vs presidio+rules (all notes)
     python tests/run_eval.py --compare --snapshot   # also refresh assets/metrics_snapshot.json
                                                     # (aggregates only — the app's safety tab reads it)
+
+The published snapshot and the README table must quote the SAME run: default to the whole dataset
+(--limit 0) so a sampled quick run never becomes the published number.
 
 Writes outputs/results.json and prints a summary.
 This is the pipeline's evaluation entry point; it lives under tests/ alongside the unit tests.
@@ -49,7 +52,8 @@ def _print_summary(res: EvalResult) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--limit", type=int, default=300, help="max notes (None=all)")
+    ap.add_argument("--limit", type=int, default=0,
+                    help="max notes to evaluate; 0 (default) = the whole dataset")
     ap.add_argument("--method", default=REDACTION, choices=["redaction", "pseudonym"])
     ap.add_argument("--no-presidio", action="store_true", help="rules only")
     ap.add_argument("--compare", action="store_true", help="rules vs presidio+rules")
@@ -58,8 +62,9 @@ def main() -> None:
                     help="also write assets/metrics_snapshot.json (committed; read by the app)")
     args = ap.parse_args()
 
-    logger.info("loading notes (limit=%s) ...", args.limit)
-    records = load_notes(limit=args.limit)
+    limit = args.limit if args.limit > 0 else None
+    logger.info("loading notes (limit=%s) ...", limit or "all")
+    records = load_notes(limit=limit)
     logger.info("%d notes; %d known PII values joined.",
                 len(records), sum(len(r.ground_truth) for r in records))
 

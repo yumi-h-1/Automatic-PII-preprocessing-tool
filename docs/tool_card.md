@@ -131,7 +131,7 @@ This matches the real NHS Information Governance workflow and makes the tool's a
 ## Limitations and caveats
 
 - **Pseudonymised data is still personal data** under UK GDPR — the vault is the re-identification key and must stay Trust-local.
-- **Precision is a conservative lower bound**: clinician names and unlisted locations correctly detected count as false positives in the evaluation (ground truth is patient-table-only).
+- **Precision is a conservative lower bound**: clinician names and unlisted locations correctly detected count as false positives in the evaluation (ground truth is patient-table-only). Over-redaction is the safe direction — precision costs you utility, recall costs you privacy, and those aren't symmetric.
 - **Not clinically validated**: evaluated on the `NHSEDataScience/synthetic_clinical_notes` dataset. Real deployment requires validation on representative Trust data.
 - **Clinical transformer models** (e.g. `obi/deid_roberta_i2b2`) were tested and performed worse on UK names than `en_core_web_lg` (i2b2 training data is US-centric).
 - **Governance prerequisites for deployment:** a Data Protection Impact Assessment (DPIA), IG /

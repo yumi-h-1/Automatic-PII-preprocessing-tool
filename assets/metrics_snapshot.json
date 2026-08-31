@@ -1,32 +1,32 @@
 {
   "_meta": {
-    "generated": "2026-07-12",
+    "generated": "2026-08-31",
     "dataset": "NHSEDataScience/synthetic_clinical_notes",
-    "notes_evaluated": 300,
+    "notes_evaluated": 1602,
     "spacy_model": "en_core_web_lg",
     "transform": "redaction"
   },
   "rules": {
     "detector": "rules",
     "transform": "redaction",
-    "notes_evaluated": 300,
+    "notes_evaluated": 1602,
     "detection": {
       "overall": {
-        "precision": 0.1861,
-        "recall": 0.2787,
-        "f1": 0.2232,
-        "tp": 51,
-        "fp": 223,
-        "fn": 132
+        "precision": 0.1754,
+        "recall": 0.2512,
+        "f1": 0.2066,
+        "tp": 258,
+        "fp": 1213,
+        "fn": 769
       },
       "per_entity": {
         "DATE_TIME": {
           "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "support": 16,
-          "caught": 16,
-          "missed": 0
+          "recall": 0.9881,
+          "f1": 0.994,
+          "support": 84,
+          "caught": 83,
+          "missed": 1
         },
         "GMC": {
           "precision": 0.0,
@@ -56,9 +56,9 @@
           "precision": 0.0,
           "recall": 0.0,
           "f1": 0.0,
-          "support": 130,
+          "support": 764,
           "caught": 0,
-          "missed": 130
+          "missed": 764
         },
         "RECORD_ID": {
           "precision": 0.0,
@@ -69,43 +69,43 @@
           "missed": 0
         },
         "UK_NHS": {
-          "precision": 1.0,
-          "recall": 0.9459,
-          "f1": 0.9722,
-          "support": 37,
-          "caught": 35,
-          "missed": 2
+          "precision": 0.9777,
+          "recall": 0.9777,
+          "f1": 0.9777,
+          "support": 179,
+          "caught": 175,
+          "missed": 4
         }
       }
     },
     "leakage": {
-      "total_known_pii_occurrences": 183,
-      "residual_leaks_after_sanitisation": 132,
-      "leakage_rate": 0.7213,
-      "leakage_rate_pct": 72.13
+      "total_known_pii_occurrences": 1027,
+      "residual_leaks_after_sanitisation": 769,
+      "leakage_rate": 0.7488,
+      "leakage_rate_pct": 74.88
     }
   },
   "presidio+rules": {
     "detector": "presidio+rules",
     "transform": "redaction",
-    "notes_evaluated": 300,
+    "notes_evaluated": 1602,
     "detection": {
       "overall": {
-        "precision": 0.1231,
-        "recall": 0.7705,
-        "f1": 0.2123,
-        "tp": 141,
-        "fp": 1004,
-        "fn": 42
+        "precision": 0.1263,
+        "recall": 0.7653,
+        "f1": 0.2169,
+        "tp": 786,
+        "fp": 5435,
+        "fn": 241
       },
       "per_entity": {
         "DATE_TIME": {
           "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "support": 16,
-          "caught": 16,
-          "missed": 0
+          "recall": 0.9881,
+          "f1": 0.994,
+          "support": 84,
+          "caught": 83,
+          "missed": 1
         },
         "GMC": {
           "precision": 0.0,
@@ -132,12 +132,12 @@
           "missed": 0
         },
         "PERSON": {
-          "precision": 0.1114,
-          "recall": 0.6923,
-          "f1": 0.1919,
-          "support": 130,
-          "caught": 90,
-          "missed": 40
+          "precision": 0.118,
+          "recall": 0.6911,
+          "f1": 0.2016,
+          "support": 764,
+          "caught": 528,
+          "missed": 236
         },
         "RECORD_ID": {
           "precision": 0.0,
@@ -148,12 +148,12 @@
           "missed": 0
         },
         "UK_NHS": {
-          "precision": 1.0,
-          "recall": 0.9459,
-          "f1": 0.9722,
-          "support": 37,
-          "caught": 35,
-          "missed": 2
+          "precision": 0.9777,
+          "recall": 0.9777,
+          "f1": 0.9777,
+          "support": 179,
+          "caught": 175,
+          "missed": 4
         },
         "URL": {
           "precision": 0.0,
@@ -166,10 +166,10 @@
       }
     },
     "leakage": {
-      "total_known_pii_occurrences": 183,
-      "residual_leaks_after_sanitisation": 3,
-      "leakage_rate": 0.0164,
-      "leakage_rate_pct": 1.64
+      "total_known_pii_occurrences": 1027,
+      "residual_leaks_after_sanitisation": 48,
+      "leakage_rate": 0.0467,
+      "leakage_rate_pct": 4.67
     }
   }
 }

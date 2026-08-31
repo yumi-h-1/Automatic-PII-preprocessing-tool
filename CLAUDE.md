@@ -12,8 +12,9 @@ re-check — plus measured residual leakage and Five Safes / Caldicott / DPA gov
 python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -e ".[app,dev]"; python -m spacy download en_core_web_lg
 
-python tests/run_eval.py --compare --limit 300   # VERIFIABLE SIGNAL: rules vs presidio+rules -> outputs/results.json
+python tests/run_eval.py --compare              # VERIFIABLE SIGNAL: rules vs presidio+rules (ALL notes) -> outputs/results.json
 python tests/run_eval.py --compare --snapshot    # …plus refresh assets/metrics_snapshot.json (committed; read by the app)
+# --limit N samples N notes for a quick run; the published snapshot + README table must quote a full run.
 python -m src.trust_demo                          # two NHS Trusts share only de-identified data -> outputs/
 streamlit run streamlit_app.py                    # demo (De-identify / Get-by-domain / How-safe-is-it)
 python -m pytest tests/ -v

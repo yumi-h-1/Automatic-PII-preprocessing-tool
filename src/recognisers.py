@@ -1,9 +1,9 @@
 """Pure-Python rule recognisers — no spaCy / Presidio dependency.
 
-These give NoteGuard a transparent, auditable baseline that runs anywhere, and
-let the evaluation harness work even before the (heavier) NER engine is wired up.
-The NHS-number recogniser validates the mod-11 check digit so random 10-digit
-strings (dose volumes, IDs) aren't flagged as patient identifiers.
+These give NoteGuard a transparent, auditable baseline that runs anywhere, even
+before the (heavier) NER engine is wired up. The NHS-number recogniser validates the
+mod-11 check digit so random 10-digit strings (dose volumes, IDs) aren't flagged as
+patient identifiers.
 
 The NHS staff / organisation rules below (GMC & NMC clinician IDs, ODS org codes,
 record UUIDs) were folded in from the Presidio branch so the rule layer also
@@ -14,8 +14,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .data import DATE, LOCATION, PERSON, UK_NHS  # noqa: F401  (re-exported types)
-
+# --- entity vocabulary, aligned to Presidio's names ---
+PERSON = "PERSON"
+UK_NHS = "UK_NHS"
+DATE = "DATE_TIME"
+LOCATION = "LOCATION"
 EMAIL = "EMAIL_ADDRESS"
 PHONE = "PHONE_NUMBER"
 POSTCODE = "UK_POSTCODE"

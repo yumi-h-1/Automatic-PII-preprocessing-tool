@@ -3,12 +3,12 @@
 Run from the repo root:  streamlit run streamlit_app.py
 
 Tabs:
-  1. De-identify your data — upload a note/CSV/PDF, get de-identified data back. Nothing is stored.
-  2. Get data by domain   — pick a clinical domain, download de-identified data (NHS + public sources).
-  3. How safe is it?      — the missed-identifier (false-negative) evidence, in plain English, with a
-                            live re-check that runs on this very deployment.
+  1. De-identify your data — paste text or upload a note/CSV/PDF, get de-identified data back.
+                             Nothing is stored.
+  2. Get data by domain   — pick a clinical domain, download de-identified NHS synthetic notes.
 
-Built on the NoteGuard package (src/) — pluggable detectors + patient-consistent transforms.
+Built on the NoteGuard package (src/) — rule-based detection + Presidio NER, redaction or
+patient-consistent pseudonymisation.
 """
 from __future__ import annotations
 
@@ -25,11 +25,9 @@ import streamlit as st
 REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src.catalog import all_entries  # noqa: E402
-from src.cohorts import DOMAINS, domain_counts, filter_by_domain, note_matches_domain  # noqa: E402
+from src.cohorts import DOMAINS, domain_counts, filter_by_domain  # noqa: E402
 from src.data import load_notes  # noqa: E402
 from src.detect import ComposedDetector, build_detector  # noqa: E402
-from src.evaluate import evaluate  # noqa: E402
 from src.ingest import SUPPORTED, csv_columns, records_from_upload  # noqa: E402
 from src.llm_assure import LLMAssurance  # noqa: E402
 from src.pipeline import Pipeline  # noqa: E402
@@ -47,19 +45,6 @@ ENTITY_COLORS = {
 NHS_PALETTE = ["#005EB8", "#0072CE", "#41B6E6", "#00A499", "#007F3B",
                "#330072", "#7C2855", "#ED8B00", "#8A1538"]
 
-NHS_BLUE, NHS_RED, NHS_GREEN = "#005EB8", "#DA291C", "#007f3b"
-
-# Lay-reader names for entity types on the safety tab (plural, no jargon)
-FRIENDLY_TYPE = {
-    "PERSON": "Names", "UK_NHS": "NHS numbers", "DATE_TIME": "Dates of birth",
-    "UK_POSTCODE": "Postcodes", "LOCATION": "Places", "GMC": "GMC numbers",
-    "NMC": "NMC numbers", "NHS_ODS": "ODS codes", "RECORD_ID": "Record IDs",
-    "PHONE_NUMBER": "Phone numbers", "EMAIL_ADDRESS": "Email addresses",
-    "UK_NINO": "NI numbers", "URL": "Web addresses",
-}
-
-SNAPSHOT_PATH = REPO / "assets" / "metrics_snapshot.json"
-
 st.set_page_config(page_title="NoteGuard", layout="wide")
 
 
@@ -76,10 +61,6 @@ def _bridge_secrets_to_env():
 
 
 _bridge_secrets_to_env()
-
-
-# External catalog sets are streamed, not downloaded whole — this caps the fetch.
-EXTERNAL_FETCH_ROWS = 500
 
 
 @st.cache_resource(show_spinner="Loading the full NHS synthetic notes set…")
@@ -180,18 +161,15 @@ def render_single(text: str, method: str, detector, person_id: str, note_id: str
 
 
 def deidentify_rows(records, method: str, detector) -> tuple[list[dict], Counter]:
-    """De-identify many (record_id, text[, person_id]) records with one shared vault
+    """De-identify many NoteRecord / IngestRecord rows with one shared vault
     (patient-consistent). Returns (rows of sanitised text only — no PHI, counts by type)."""
     pipe = Pipeline(detector, PseudonymVault())
     rows: list[dict] = []
     counts: Counter = Counter()
     for r in records:
-        if isinstance(r, tuple):                      # (record_id, text) from the catalog
-            rid, text, pid = r[0], r[1], r[0]
-        else:                                         # NoteRecord / IngestRecord
-            rid = getattr(r, "record_id", None) or getattr(r, "note_id", "")
-            pid = getattr(r, "person_id", rid)
-            text = r.text
+        rid = getattr(r, "record_id", None) or getattr(r, "note_id", "")
+        pid = getattr(r, "person_id", rid)
+        text = r.text
         if not text or not text.strip():
             continue
         res = pipe.sanitise(text, method, pid)
@@ -241,75 +219,6 @@ def download_rows(rows: list[dict], stem: str):
                        file_name=f"{stem}.csv", mime="text/csv", use_container_width=True)
 
 
-# ---------------------------------------------------------------- safety-tab components
-@st.cache_data
-def load_snapshot() -> dict | None:
-    """Published evaluation snapshot (aggregate numbers only — no note text).
-    Regenerate with: python tests/run_eval.py --compare --snapshot"""
-    try:
-        return json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-
-
-def safety_tiles(leak: dict):
-    """The headline, as three numbers a non-specialist can read."""
-    known = leak["total_known_pii_occurrences"]
-    missed = leak["residual_leaks_after_sanitisation"]
-    hidden_pct = 100 - leak["leakage_rate_pct"]
-    missed_color = NHS_RED if missed else NHS_GREEN
-    st.markdown(
-        f"""
-        <div class="stat-grid">
-          <div class="stat-card"><div class="num" style="color:{NHS_BLUE}">{known:,}</div>
-            <p>identifiers we knew were hidden in the notes</p></div>
-          <div class="stat-card"><div class="num" style="color:{missed_color}">{missed:,}</div>
-            <p>still visible after de-identification — the misses we count</p></div>
-          <div class="stat-card"><div class="num" style="color:{NHS_GREEN}">{hidden_pct:.1f}%</div>
-            <p>successfully removed or disguised</p></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def caught_missed_chart(per_entity: dict):
-    """Per identifier type at the detection stage: caught (blue) vs missed (red)."""
-    rows = []
-    for et, m in per_entity.items():
-        support = m.get("support", 0)
-        if not support:
-            continue
-        caught = m.get("caught", round(m.get("recall", 0) * support))
-        rows.append({"type": FRIENDLY_TYPE.get(et, redaction_label(et)),
-                     "status": "Caught", "count": caught, "support": support})
-        rows.append({"type": FRIENDLY_TYPE.get(et, redaction_label(et)),
-                     "status": "Missed", "count": support - caught, "support": support})
-    if not rows:
-        st.info("No known identifiers in this sample.")
-        return
-    df = pd.DataFrame(rows)
-    order = (df.groupby("type")["support"].first().sort_values(ascending=False).index.tolist())
-    chart = (
-        alt.Chart(df)
-        .mark_bar(height=22, stroke="#ffffff", strokeWidth=2)
-        .encode(
-            y=alt.Y("type:N", sort=order, title=None),
-            x=alt.X("count:Q", title="Known identifier occurrences"),
-            color=alt.Color("status:N",
-                            scale=alt.Scale(domain=["Caught", "Missed"],
-                                            range=[NHS_BLUE, NHS_RED]),
-                            legend=alt.Legend(title=None, orient="top")),
-            order=alt.Order("status:N", sort="ascending"),
-            tooltip=[alt.Tooltip("type:N", title="Identifier type"),
-                     alt.Tooltip("status:N", title="At detection"),
-                     alt.Tooltip("count:Q", title="Occurrences")],
-        )
-        .properties(height=32 * df["type"].nunique() + 40)
-    )
-    st.altair_chart(chart, use_container_width=True)
-
-
 st.markdown(
     """
     <style>
@@ -335,23 +244,7 @@ st.markdown(
       .step-card p { margin:0; font-size:13.5px; color:#4c6272; line-height:1.45; }
       .step-card svg { width:28px; height:28px; stroke:#005EB8; fill:none; stroke-width:2;
                        stroke-linecap:round; stroke-linejoin:round; }
-      /* Safety-tab stat tiles + mistake-type cards */
-      .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:10px 0 6px; }
-      .stat-card { background:#f0f4f5; border-radius:12px; padding:18px; border:1px solid #e8edee;
-                   text-align:center; }
-      .stat-card .num { font-size:40px; font-weight:700; line-height:1.1; }
-      .stat-card p { margin:6px 0 0; font-size:13.5px; color:#4c6272; line-height:1.4; }
-      .mistake-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:10px 0 6px; }
-      .mistake-card { border-radius:12px; padding:16px 18px; border:1px solid #e8edee; }
-      .mistake-card h4 { margin:0 0 6px; font-size:15.5px; color:#212b32; }
-      .mistake-card p { margin:0; font-size:13.5px; color:#4c6272; line-height:1.5; }
-      .platform-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:12px 0 6px; }
-      .platform-card { background:#ffffff; border:1px solid #d8dde0; border-radius:12px; padding:16px 18px; }
-      .platform-card .where { color:#005EB8; font-weight:700; font-size:12px; letter-spacing:.6px; }
-      .platform-card h4 { margin:8px 0 4px; font-size:15.5px; color:#212b32; }
-      .platform-card p { margin:0; font-size:13px; color:#4c6272; line-height:1.5; }
-      @media (max-width:800px){ .how-grid, .stat-grid, .mistake-grid, .platform-grid
-                                { grid-template-columns:1fr; } }
+      @media (max-width:800px){ .how-grid { grid-template-columns:1fr; } }
     </style>
     <div class="nhs-header"><span class="brand">NoteGuard</span></div>
     <p class="nhs-tagline">Every clinical note is someone's story — NoteGuard keeps the person safe,
@@ -418,8 +311,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-tab_try, tab_domain, tab_safety = st.tabs(
-    ["De-identify your data", "Get data by domain", "How safe is it?"])
+tab_try, tab_domain = st.tabs(["De-identify your data", "Get data by domain"])
 
 # ---------------------------------------------------------------- Tab 1: de-identify your data
 with tab_try:
@@ -485,204 +377,29 @@ with tab_try:
 # ---------------------------------------------------------------- Tab 2: get data by domain
 with tab_domain:
     st.markdown(
-        "Pick a clinical domain and download **de-identified** data for analysis. Every record is "
-        "run through the same de-identification gate before it can be downloaded."
+        "Pick a clinical domain and download **de-identified** notes for analysis. The source is the "
+        "NHSE synthetic clinical notes set, and every record is run through the same de-identification "
+        "gate before it can be downloaded."
     )
-    src = st.radio("Source", ["NHS synthetic notes (primary)", "External public dataset"],
-                   horizontal=True)
     domain = st.selectbox("Clinical domain", DOMAINS)
+    st.caption("Provenance: **NHS-made** — NHSE synthetic clinical notes. Domain cohorts are derived "
+               "by clinical-concept keyword matching over the note text (high-recall tagging, not a "
+               "validated phenotype).")
 
-    if src == "NHS synthetic notes (primary)":
-        st.caption("Provenance: **NHS-made** — NHSE synthetic clinical notes. Domain cohorts are derived "
-                   "by clinical-concept keyword matching over the note text (high-recall tagging, not a "
-                   "validated phenotype).")
-        if st.button("Build de-identified cohort", use_container_width=True, key="dom_nhs_btn"):
-            with st.spinner("Scanning all notes for the domain and de-identifying the full cohort…"):
-                pool = load_all_notes()
-                cohort = filter_by_domain(pool, domain)
-                st.session_state["dom_cohort_counts"] = domain_counts(pool)
-                st.session_state["dom_rows"] = deidentify_rows(cohort, method, det)
-                st.session_state["dom_rows_for"] = domain    # invalidate on domain change
-        if st.session_state.get("dom_cohort_counts"):
-            st.caption("Cohort sizes across all notes (overlap = comorbidity): "
-                       + " · ".join(f"{d}: {c}" for d, c in st.session_state["dom_cohort_counts"].items()))
-        if (st.session_state.get("dom_rows") is not None
-                and st.session_state.get("dom_rows_for") == domain):
-            rows, counts = st.session_state["dom_rows"]
-            if rows:
-                render_batch_result(rows, counts, f"noteguard_{domain.replace(' ', '_')}_nhs")
-            else:
-                st.warning("No notes matched this domain.")
-
-    else:  # External public dataset
-        loadable = [e for e in all_entries() if e.loadable]
-        linkonly = [e for e in all_entries() if not e.loadable]
-        labels = {e.name: e for e in loadable}
-        choice = st.selectbox("Public dataset", list(labels))
-        entry = labels[choice]
-        st.caption(f"Provenance: {entry.provenance}  ·  Licence: {entry.license}  ·  [dataset card]({entry.url})")
-        st.warning("External datasets are **not NHS data**; provenance is labelled honestly. "
-                   "They are de-identified by the same gate before download.")
-        if st.button("Fetch, filter & de-identify", use_container_width=True, key="ext_btn"):
-            with st.spinner(f"Streaming {entry.name} (first {EXTERNAL_FETCH_ROWS} rows), "
-                            f"filtering for '{domain}', de-identifying…"):
-                try:
-                    raw = entry.loader(EXTERNAL_FETCH_ROWS)
-                except Exception as e:
-                    st.error(f"Could not load dataset: {e}")
-                    raw = []
-                matched = [(rid, txt) for rid, txt in raw if note_matches_domain(txt, domain)]
-                st.session_state["ext_rows"] = deidentify_rows(matched, method, det)
-                st.session_state["ext_rows_for"] = (domain, entry.key)  # invalidate on change
-        if (st.session_state.get("ext_rows") is not None
-                and st.session_state.get("ext_rows_for") == (domain, entry.key)):
-            rows, counts = st.session_state["ext_rows"]
-            if rows:
-                render_batch_result(rows, counts, f"noteguard_{domain.replace(' ', '_')}_{entry.key}")
-            else:
-                st.warning(f"No rows matched this domain in the first {EXTERNAL_FETCH_ROWS} rows.")
-        if linkonly:
-            with st.expander("More public datasets (reference / link-only)"):
-                for e in linkonly:
-                    st.markdown(f"- **[{e.name}]({e.url})** — {e.provenance} · {e.license}")
-
-# ---------------------------------------------------------------- Tab 3: how safe is it?
-with tab_safety:
-    st.markdown(
-        "For a de-identification tool the question that matters most is not *\"how accurate is it?\"* "
-        "— it is **\"what did it miss?\"** A tool can look impressive and still let one real name "
-        "slip through. So the number we hold ourselves to is the **miss rate**: of the identifiers we "
-        "*know* are in the notes, how many are still visible after de-identification?"
-    )
-    st.markdown(
-        """
-        <div class="mistake-grid">
-          <div class="mistake-card" style="background:#fdf1f0;border-color:#f3c8c4;">
-            <h4>A missed identifier — the mistake we count</h4>
-            <p>A real name or NHS number stays visible in the output (a <em>false negative</em>).
-            This is a privacy risk, so we measure it, publish it, and design the engine to keep it
-            as close to zero as possible.</p>
-          </div>
-          <div class="mistake-card" style="background:#eef5f0;border-color:#c5ddcd;">
-            <h4>Over-removal — the mistake we accept</h4>
-            <p>A harmless word gets redacted by mistake (a <em>false positive</em>). That costs a
-            little data quality but harms no one — a fair trade for fewer misses.</p>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    snapshot = load_snapshot()
-    if snapshot is None:
-        st.warning("No published snapshot found (assets/metrics_snapshot.json). "
-                   "Generate one with `python tests/run_eval.py --compare --snapshot`, "
-                   "or use the live check below.")
-    else:
-        meta = snapshot.get("_meta", {})
-        shipping = snapshot.get("presidio+rules") or next(
-            (v for k, v in snapshot.items() if not k.startswith("_")), None)
-
-        st.markdown("#### The test, in one sentence")
-        st.markdown(
-            f"We took **{meta.get('notes_evaluated', '?')} synthetic NHS notes** where every "
-            "identifier is already known (the dataset keeps them in structured tables), ran "
-            "NoteGuard, and then checked the output for every known identifier — counting each "
-            "one still visible as a **miss**."
-        )
-        if shipping:
-            safety_tiles(shipping["leakage"])
-        st.caption(
-            f"Measured on {meta.get('generated', '?')} · dataset: {meta.get('dataset', '?')} "
-            f"(synthetic — no real patients) · spaCy model: {meta.get('spacy_model', '?')} · "
-            f"transform: {meta.get('transform', '?')}. "
-            "Reproduce with `python tests/run_eval.py --compare`."
-        )
-
-        if shipping:
-            st.markdown("#### What gets caught, what gets missed — by identifier type")
-            st.markdown(
-                "At the *detection* stage, occurrence by occurrence (full engine). Missing a name "
-                "once here does not always mean it leaks — the final-output check above is the "
-                "authoritative privacy number — but this shows where the remaining risk lives:"
-            )
-            caught_missed_chart(shipping["detection"]["per_entity"])
-
-    with st.expander("Honest caveats — read before quoting these numbers"):
-        st.markdown(
-            "- **The notes are synthetic** (NHSE-published test data). No real patient data is used "
-            "or needed for this evaluation.\n"
-            "- **The known-identifier list comes from the dataset's structured tables**, so the miss "
-            "rate and recall are sound. Precision is a conservative lower bound: only PII held in "
-            "those tables counts as correct, so correctly removing a clinician's name that is *not* "
-            "in the tables is scored as a false positive. That is why headline precision looks low "
-            "(0.12–0.19) — much of it is real identifiers the ground truth simply doesn't list.\n"
-            "- **Over-redaction is the safe direction.** Precision costs you utility. Recall costs "
-            "you privacy. Those aren't symmetric.\n"
-            "- **Low-confidence detections are redacted anyway** and flagged for human review — the "
-            "engine fails safe.\n"
-            "- The published snapshot was measured with the full-size model. A lighter deployment "
-            "(like this free-tier demo) may run the small model — use the live check below to "
-            "measure *this* deployment rather than trust the snapshot."
-        )
-
-    st.markdown("#### Don't take our word for it — re-run the check here")
-    st.markdown(
-        "This runs the same evaluation on the deployment you are using right now, with the model "
-        "it actually has loaded. Aggregate numbers only — no note text is shown or stored."
-    )
-    n_eval = st.slider("Notes to test", 50, 300, 100, step=50, key="live_eval_n")
-    if st.button("Run the live check", use_container_width=True, key="live_eval_btn"):
-        with st.spinner(f"De-identifying {n_eval} notes and counting misses…"):
-            try:
-                recs = load_notes(limit=n_eval)
-                live = evaluate(recs, detector, REDACTION)  # deterministic engine, no LLM
-                st.session_state["live_eval"] = live.to_dict()
-            except Exception as e:
-                st.error(f"Could not run the live check (dataset unavailable?): {e}")
-    if st.session_state.get("live_eval"):
-        live = st.session_state["live_eval"]
-        model = getattr(detector, "spacy_model", None)
-        st.caption(f"Live result from this deployment — detector: {live.get('detector', '?')}"
-                   + (f" · spaCy model: {model}" if model else "") + " · transform: redaction.")
-        safety_tiles(live["leakage"])
-        caught_missed_chart(live["detection"]["per_entity"])
-
-# ---------------------------------------------------------------- runs where the NHS works
-st.markdown("---")
-st.markdown("#### Built to run where NHS teams already work")
-st.markdown(
-    "This public demo is hosted on Streamlit so anyone can try it at zero cost — but the engine is "
-    "a plain, pip-installable Python package with no service dependencies, so the same pipeline "
-    "drops into the platforms NHS analysts already use:"
-)
-st.markdown(
-    """
-    <div class="platform-grid">
-      <div class="platform-card">
-        <div class="where">MICROSOFT FABRIC / AZURE DATABRICKS</div>
-        <h4>Lakehouse notebook</h4>
-        <p>A ready-to-run notebook de-identifies a lakehouse table in place —
-        <a href="https://github.com/yumi-h-1/Automatic-PII-preprocessing-tool/blob/main/integrations/fabric_deidentify.ipynb">
-        integrations/fabric_deidentify.ipynb</a>.</p>
-      </div>
-      <div class="platform-card">
-        <div class="where">PALANTIR FOUNDRY (FDP)</div>
-        <h4>Foundry transform</h4>
-        <p>The same pipeline as a Foundry code-repository transform, for the NHS Federated Data
-        Platform —
-        <a href="https://github.com/yumi-h-1/Automatic-PII-preprocessing-tool/blob/main/integrations/foundry_transform.py">
-        integrations/foundry_transform.py</a>.</p>
-      </div>
-      <div class="platform-card">
-        <div class="where">NHS SECURE DATA ENVIRONMENTS</div>
-        <h4>Sanitise at source</h4>
-        <p>Runs inside a Trust's own governance boundary so only de-identified text leaves — the
-        platform notes are in
-        <a href="https://github.com/yumi-h-1/Automatic-PII-preprocessing-tool/blob/main/docs/NHS_PLATFORMS.md">
-        docs/NHS_PLATFORMS.md</a>.</p>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    if st.button("Build de-identified cohort", use_container_width=True, key="dom_nhs_btn"):
+        with st.spinner("Scanning all notes for the domain and de-identifying the full cohort…"):
+            pool = load_all_notes()
+            cohort = filter_by_domain(pool, domain)
+            st.session_state["dom_cohort_counts"] = domain_counts(pool)
+            st.session_state["dom_rows"] = deidentify_rows(cohort, method, det)
+            st.session_state["dom_rows_for"] = domain    # invalidate on domain change
+    if st.session_state.get("dom_cohort_counts"):
+        st.caption("Cohort sizes across all notes (overlap = comorbidity): "
+                   + " · ".join(f"{d}: {c}" for d, c in st.session_state["dom_cohort_counts"].items()))
+    if (st.session_state.get("dom_rows") is not None
+            and st.session_state.get("dom_rows_for") == domain):
+        rows, counts = st.session_state["dom_rows"]
+        if rows:
+            render_batch_result(rows, counts, f"noteguard_{domain.replace(' ', '_')}_nhs")
+        else:
+            st.warning("No notes matched this domain.")

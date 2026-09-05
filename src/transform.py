@@ -5,7 +5,7 @@ patient-consistent* de-identification — the same patient maps to the same
 surrogate across their whole admission journey. Only date-of-birth is treated as
 PII; it is shifted by a single consistent per-patient offset (visit / admission
 dates are clinically useful and left intact). That utility-preserving property is
-what makes the cleaned data useful for downstream / federated training, not just safe.
+what makes the cleaned data useful for downstream analysis, not just safe.
 
 Surrogates are realistic en_GB fakes (folded in from the Presidio branch's Faker
 vault) so the output reads like a real note — better for training than `Patient_001`

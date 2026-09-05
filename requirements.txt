@@ -13,6 +13,5 @@ huggingface_hub
 pandas
 pypdf
 requests
-datasets
 # spaCy English model (small) as a pinned wheel — Streamlit Cloud can't run `spacy download`.
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

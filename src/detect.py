@@ -2,7 +2,7 @@
 
 NoteGuard does not reinvent detection — Presidio is the engine. Our job is to
 (1) compose Presidio's NER with our transparent rule layer, (2) keep everything
-behind one `Detector` interface so the pipeline and eval are engine-agnostic, and
+behind one `Detector` interface so the pipeline is engine-agnostic, and
 (3) make detection degrade gracefully to pure-Python rules when spaCy/Presidio
 are unavailable.
 """

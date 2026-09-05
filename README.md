@@ -134,7 +134,7 @@ pytest -q                                 # unit tests
 The dataset is pulled from Hugging Face on first run. To run fully offline, drop the notes CSV in a
 folder and set `NOTEGUARD_DATA_DIR=/path/to/csv`.
 
-## Deploy the live demo — Streamlit Community Cloud (free, no card)
+## Deploy the live demo — Streamlit Community Cloud
 
 Point <https://share.streamlit.io> at this repo with main file `streamlit_app.py`. `requirements.txt`
 ships the small spaCy model so it fits the free tier's RAM, and `build_detector` auto-uses whichever

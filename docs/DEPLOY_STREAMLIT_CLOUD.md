@@ -5,8 +5,8 @@ surprise bill. It gives a clean `https://<app>.streamlit.app` URL straight from 
 
 ## Why this setup
 The free tier has ~1 GB RAM, so we ship the **small** spaCy model (`en_core_web_sm`, 91% name recall)
-instead of `lg` (100%). This only affects the *live* instance — the committed metrics in
-`outputs/results.json` and local/HF runs still use `lg`. `requirements.txt` pins the `sm` model wheel
+instead of `lg` (100%). This only affects the *live* instance — local runs still use `lg`, and the
+numbers quoted in the README were measured with `lg`. `requirements.txt` pins the `sm` model wheel
 (Streamlit Cloud can't run `python -m spacy download`), and `build_detector` automatically uses
 whichever model is actually installed (see `src/detect.py`), so no config is needed.
 
@@ -16,20 +16,11 @@ whichever model is actually installed (see `src/detect.py`), so no config is nee
 3. **Main file path:** `streamlit_app.py`  ·  Python 3.10–3.12.
 4. Click **Deploy**. First build installs Presidio + spaCy + `sm` (~2–4 min), then serves the app.
 
-## Optional: the LLM assurance pass
-It's off and inert unless a free key is provided. In the app's **Settings → Secrets**, add:
-
-```toml
-LLM_ASSURE_API_KEY = "your-free-groq-or-gemini-key"
-# LLM_ASSURE_BASE_URL = "..."   # optional, OpenAI-compatible base (default: Groq)
-# LLM_ASSURE_MODEL = "..."      # optional
-```
-
-`streamlit_app.py` automatically bridges these secrets into the environment (`_bridge_secrets_to_env`),
-so just adding them in the dashboard is enough — no code change needed.
+No secrets are required: detection is deterministic and local, so the app makes no external model calls.
 
 ## Notes
-- **Want full 100% name recall?** Set `PII_SPACY_MODEL = "en_core_web_lg"` in secrets **and** swap the
+- **Want full 100% name recall?** Set `PII_SPACY_MODEL = "en_core_web_lg"` in **Settings → Secrets**
+  (`streamlit_app.py` bridges it into the environment via `_bridge_secrets_to_env`) **and** swap the
   model wheel in `requirements.txt` to the `lg` wheel — but `lg` (~560 MB) may exceed the free tier's
   RAM, so test it. The `sm` default is the safe choice for the free tier.
 - The dataset (NHSE synthetic notes) is pulled from Hugging Face on first use; if that fails the app

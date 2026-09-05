@@ -23,10 +23,8 @@ A short **"How it works"** walkthrough (Add data → Detect & remove → Review 
    health, cancer, renal) and download a **de-identified** cohort from the NHSE synthetic notes. Every
    record passes through the same de-identification gate first.
 
-The UI follows the **NHS.UK** look (NHS Blue header, NHS palette, green action buttons). Optional
-**AI double-check** (sidebar) adds a free external AI model (default: Meta Llama 3.3 70B served by
-Groq; the model and source are shown in the UI) as a recall-oriented safety net whose hits are always
-flagged for human review — off unless a key is configured.
+The UI follows the **NHS.UK** look (NHS Blue header, NHS palette, green action buttons). Detection is
+fully deterministic and runs locally: no external model, no API key, no network call with your text in it.
 
 **Data:** the only dataset the tool ships against is the Hugging Face
 [`NHSEDataScience/synthetic_clinical_notes`](https://huggingface.co/datasets/NHSEDataScience/synthetic_clinical_notes)
@@ -43,8 +41,8 @@ Presidio is the detection **engine** — we don't reinvent it. NoteGuard is the 
 2. **Patient-consistent de-identification.** Same patient → same surrogate across their whole admission
    journey. Only date-of-birth is treated as PII (shifted by a consistent per-patient offset); visit /
    admission dates are clinically useful and left intact. Realistic en_GB fakes (or `[label]` redaction).
-3. **Pluggable + degrades gracefully.** One `Detector` interface (Rule / Presidio / optional LLM); the
-   pure-Python rule layer runs even if spaCy/Presidio are unavailable, and the model auto-resolves
+3. **Pluggable + degrades gracefully.** One `Detector` interface (Rule / Presidio); the pure-Python
+   rule layer runs even if spaCy/Presidio are unavailable, and the model auto-resolves
    `lg → sm → rules` to whatever is installed.
 4. **Human-in-the-loop by design.** Low-confidence spans are redacted anyway and flagged `needs_review`,
    so over-redaction — not leakage — is the failure mode.
@@ -58,7 +56,7 @@ your text / a domain cohort
         │
         ▼  ingest in memory (txt/csv/pdf → records, no disk)        src/ingest.py · src/cohorts.py
         ▼  fix mojibake                                             src/data.py
-        ▼  detect  =  rules  ∪  Presidio NER  (∪ optional LLM)      src/recognisers.py · src/detect.py · src/llm_assure.py
+        ▼  detect  =  rules  ∪  Presidio NER                        src/recognisers.py · src/detect.py
         │            overlap-safe merge; precise rules win
         ▼  transform  =  redact  |  pseudonymise + DOB date-shift   src/transform.py  (patient-consistent Faker vault)
         ▼  review (donut chart + change table)  →  download         streamlit_app.py
@@ -101,11 +99,10 @@ from git history at commit `09343db` if the measurement needs to be repeated.*
 src/
   data.py          load the NHSE synthetic notes (free text only) + mojibake repair
   recognisers.py   pure-Python rules: NHS checksum/context, postcode, date, phone, email, GMC/NMC/ODS, UUID
-  detect.py        RuleDetector / PresidioDetector / optional LLM compose, behind one Detector interface
+  detect.py        RuleDetector / PresidioDetector behind one Detector interface
   transform.py     redaction | patient-consistent pseudonymisation + DOB date-shift (Faker vault)
   ingest.py        in-memory bytes → records for txt/csv/pdf (no disk writes)
   cohorts.py       derive clinical-domain cohorts from note text (keyword tagging)
-  llm_assure.py    optional OpenAI-compatible LLM assurance pass (off unless a key is set)
   pipeline.py      single-note detect -> sanitise -> audit
 tests/             unit tests incl. test_privacy.py (no-disk-writes)
 docs/              DEPLOY_STREAMLIT_CLOUD.md
@@ -141,8 +138,7 @@ folder and set `NOTEGUARD_DATA_DIR=/path/to/csv`.
 
 Point <https://share.streamlit.io> at this repo with main file `streamlit_app.py`. `requirements.txt`
 ships the small spaCy model so it fits the free tier's RAM, and `build_detector` auto-uses whichever
-model is installed. To enable the optional AI double-check, add a free key as a secret
-(`LLM_ASSURE_API_KEY`). Full steps: [docs/DEPLOY_STREAMLIT_CLOUD.md](docs/DEPLOY_STREAMLIT_CLOUD.md).
+model is installed. Full steps: [docs/DEPLOY_STREAMLIT_CLOUD.md](docs/DEPLOY_STREAMLIT_CLOUD.md).
 
 ## Data notes (found by inspecting the data, not assuming)
 - NHS numbers in this synthetic set are **9 digits** (real ones are 10 + mod-11 check). We catch both:

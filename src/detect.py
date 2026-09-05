@@ -1,7 +1,7 @@
 """Detection layer.
 
 NoteGuard does not reinvent detection — Presidio is the engine. Our job is to
-(1) compose Presidio's NER with our transparent rule layer, (2) keep everything
+(1) union Presidio's NER with our transparent rule layer, (2) keep everything
 behind one `Detector` interface so the pipeline is engine-agnostic, and
 (3) make detection degrade gracefully to pure-Python rules when spaCy/Presidio
 are unavailable.
@@ -142,36 +142,11 @@ def _merge(spans: list[Span]) -> list[Span]:
     return kept
 
 
-class ComposedDetector:
-    """Run a base detector then optional extra detectors (e.g. LLM assurance),
-    unioning all spans through ``_merge`` so output stays disjoint and precise
-    rules still win on overlap. Extra-detector failures are swallowed (assurance
-    is additive — it must never break the deterministic path)."""
-
-    def __init__(self, base: Detector, *extra: Detector):
-        self.base = base
-        self.extra = list(extra)
-        self.name = "+".join([getattr(base, "name", "?"), *(getattr(d, "name", "?") for d in extra)])
-
-    def detect(self, text: str) -> list[Span]:
-        spans = list(self.base.detect(text))
-        for d in self.extra:
-            try:
-                spans += d.detect(text)
-            except Exception:  # pragma: no cover - assurance is best-effort
-                continue
-        return _merge(spans)
-
-
 DEFAULT_SPACY_MODEL = "en_core_web_lg"
 _FALLBACK_SPACY_MODEL = "en_core_web_sm"
 
 
-def build_detector(
-    use_presidio: bool = True,
-    spacy_model: str | None = None,
-    use_llm: bool = False,
-) -> Detector:
+def build_detector(use_presidio: bool = True, spacy_model: str | None = None) -> Detector:
     """Best available detector; falls back to rules if Presidio is unavailable.
 
     Model resolution: explicit ``spacy_model`` arg > ``PII_SPACY_MODEL`` env var >
@@ -179,7 +154,6 @@ def build_detector(
     (e.g. a memory-constrained free host where only ``en_core_web_sm`` is present),
     we transparently retry with ``en_core_web_sm`` before giving up to pure rules —
     so a lighter deploy degrades to 91% recall instead of losing NER entirely.
-    use_llm adds an optional LLM assurance pass when LLM_ASSURE_API_KEY is set.
     """
     import os
 
@@ -206,10 +180,4 @@ def build_detector(
                 print(f"[noteguard] Presidio with '{candidate}' unavailable ({e}).")
         if isinstance(base, RuleDetector):
             print("[noteguard] No spaCy model installed; falling back to rules.")
-    if use_llm:
-        from .llm_assure import LLMAssurance
-
-        llm = LLMAssurance()
-        if llm.is_configured():
-            return ComposedDetector(base, llm)
     return base

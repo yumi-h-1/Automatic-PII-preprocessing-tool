@@ -27,9 +27,8 @@ sys.path.insert(0, str(REPO))
 
 from src.cohorts import DOMAINS, domain_counts, filter_by_domain  # noqa: E402
 from src.data import load_notes  # noqa: E402
-from src.detect import ComposedDetector, build_detector  # noqa: E402
+from src.detect import build_detector  # noqa: E402
 from src.ingest import SUPPORTED, csv_columns, records_from_upload  # noqa: E402
-from src.llm_assure import LLMAssurance  # noqa: E402
 from src.pipeline import Pipeline  # noqa: E402
 from src.transform import PSEUDONYM, REDACTION, PseudonymVault, redaction_label  # noqa: E402
 
@@ -38,7 +37,6 @@ ENTITY_COLORS = {
     "LOCATION": "#cfe8ff", "ORGANIZATION": "#cfe8ff", "RECORD_ID": "#ffd9c2",
     "PHONE_NUMBER": "#d4f4dd", "EMAIL_ADDRESS": "#d4f4dd",
     "UK_NINO": "#ffe9b3", "GMC": "#f0e0a0", "NMC": "#f0e0a0", "NHS_ODS": "#f0e0a0",
-    "LLM_PII": "#e8d6ff",
 }
 
 # NHS-brand categorical palette for the donut chart
@@ -49,10 +47,10 @@ st.set_page_config(page_title="NoteGuard", layout="wide")
 
 
 def _bridge_secrets_to_env():
-    """Streamlit Cloud exposes config via st.secrets; our engine/LLM client read os.environ.
+    """Streamlit Cloud exposes config via st.secrets; our engine reads os.environ.
     Copy the known keys across so secrets configured in the dashboard take effect."""
     import os
-    for key in ("PII_SPACY_MODEL", "LLM_ASSURE_API_KEY", "LLM_ASSURE_BASE_URL", "LLM_ASSURE_MODEL"):
+    for key in ("PII_SPACY_MODEL",):
         try:
             if key in st.secrets and key not in os.environ:
                 os.environ[key] = str(st.secrets[key])
@@ -76,15 +74,6 @@ def load_engine():
     except Exception:
         notes = []
     return detector, notes
-
-
-def active_detector(base, use_llm: bool):
-    """Compose the optional LLM assurance pass onto the base detector when enabled+configured."""
-    if use_llm:
-        llm = LLMAssurance()
-        if llm.is_configured():
-            return ComposedDetector(base, llm), True
-    return base, False
 
 
 def highlight(text: str, spans) -> str:
@@ -133,7 +122,7 @@ def render_single(text: str, method: str, detector, person_id: str, note_id: str
         st.warning(
             f"**Human review suggested — {len(result.review_items)} low-confidence detection(s)**\n\n"
             "These spans were removed for safety but confidence was below the auto-confirm "
-            "threshold (this includes any LLM-assurance hits). A reviewer should confirm them."
+            "threshold. A reviewer should confirm them."
         )
     else:
         st.success("All detections auto-confirmed (score >= threshold). No human review needed.")
@@ -257,30 +246,12 @@ st.markdown(
 
 detector, NOTES = load_engine()
 
-# ----- sidebar: de-identification mode + optional LLM assurance toggle -----
+# ----- sidebar: de-identification mode -----
 with st.sidebar:
     st.header("Options")
-    from urllib.parse import urlparse
-
-    llm_cfg = LLMAssurance()
-    llm_host = urlparse(llm_cfg.base_url).netloc or llm_cfg.base_url
-    use_llm = st.toggle("AI double-check", value=False,
-                        help=f"A free external AI model (`{llm_cfg.model}` served by {llm_host}) "
-                             "re-reads the text and flags anything the engine may have missed. "
-                             "Its suggestions are always marked for human review, never auto-trusted. "
-                             "Off unless a free API key is configured, and your text is sent to the "
-                             "model only while this toggle is on.")
-    if use_llm:
-        if llm_cfg.is_configured():
-            st.success(f"AI double-check: ready — `{llm_cfg.model}` via {llm_host}")
-        else:
-            st.info("Set `LLM_ASSURE_API_KEY` (a free key) as a secret to enable. "
-                    "Off until then — the engine runs deterministically.")
     method = st.radio("De-identification", [REDACTION, PSEUDONYM],
                       format_func=lambda m: "Redact ([type] tags)" if m == REDACTION
                       else "Pseudonymise (realistic, patient-consistent)")
-
-det, llm_on = active_detector(detector, use_llm)
 
 # ----- onboarding: how it works -----
 st.markdown(
@@ -360,16 +331,12 @@ with tab_try:
         else:
             st.info("Sample notes unavailable (dataset not loaded). Try Paste or Upload.")
 
-    if llm_on:
-        st.caption("AI double-check is on — extra spans (purple, dashed) are AI "
-                   "suggestions flagged for human review.")
-
     if single:
-        render_single(single[0], method, det, single[1], single[2])
+        render_single(single[0], method, detector, single[1], single[2])
     elif records:
         if st.button("Prepare de-identified batch", use_container_width=True):
             with st.spinner(f"De-identifying {len(records)} rows…"):
-                st.session_state["upload_rows"] = deidentify_rows(records, method, det)
+                st.session_state["upload_rows"] = deidentify_rows(records, method, detector)
         if st.session_state.get("upload_rows"):
             rows, counts = st.session_state["upload_rows"]
             render_batch_result(rows, counts, "noteguard_upload")
@@ -391,7 +358,7 @@ with tab_domain:
             pool = load_all_notes()
             cohort = filter_by_domain(pool, domain)
             st.session_state["dom_cohort_counts"] = domain_counts(pool)
-            st.session_state["dom_rows"] = deidentify_rows(cohort, method, det)
+            st.session_state["dom_rows"] = deidentify_rows(cohort, method, detector)
             st.session_state["dom_rows_for"] = domain    # invalidate on domain change
     if st.session_state.get("dom_cohort_counts"):
         st.caption("Cohort sizes across all notes (overlap = comorbidity): "

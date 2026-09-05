@@ -20,20 +20,17 @@ streamlit run streamlit_app.py                    # demo (De-identify · Get dat
 python -m pytest tests/ -v
 
 # Offline data: set NOTEGUARD_DATA_DIR to a folder holding the notes CSV (else auto-downloaded from HF).
-# Optional LLM assurance pass: set LLM_ASSURE_API_KEY (free Groq/Gemini/HF key); off + inert otherwise.
-#   LLM_ASSURE_BASE_URL / LLM_ASSURE_MODEL override the OpenAI-compatible endpoint (default: Groq Llama-3.x).
 ```
 
 ## Architecture
 - `src/` — `data` (load the NHSE notes CSV, free text only) · `recognisers` (pure-Python rules +
-  the entity vocabulary) · `detect` (Rule / Presidio / optional LLM compose, graceful fallback) ·
-  `transform` (redact | patient-consistent pseudonymise + date-shift, Faker) · `ingest` (in-memory
-  bytes→records, no disk) · `cohorts` (clinical-domain keyword tagging) · `llm_assure` (optional
-  OpenAI-compatible LLM assurance) · `pipeline`.
+  the entity vocabulary) · `detect` (Rule / Presidio, graceful fallback) · `transform` (redact |
+  patient-consistent pseudonymise + date-shift, Faker) · `ingest` (in-memory bytes→records, no disk) ·
+  `cohorts` (clinical-domain keyword tagging) · `pipeline`.
 - `streamlit_app.py` demo (2 tabs: De-identify · Get-by-domain) · `tests/` mirror `src/`.
   Packaged via `pyproject.toml`.
-- LLM assurance is OFF unless `LLM_ASSURE_API_KEY` is set; never trusted blindly (spans flagged
-  `needs_review`). Tab 1 processes uploads in memory only — `tests/test_privacy.py` asserts no disk writes.
+- Detection is deterministic and local — no external model, no API key, no network call carrying note
+  text. Tab 1 processes uploads in memory only — `tests/test_privacy.py` asserts no disk writes.
 
 ## Code style
 - Python 3.10+, type hints on function signatures. The pure-Python rule layer must stay importable
@@ -68,16 +65,14 @@ python -m pytest tests/ -v
   dataset catalog (`catalog.py`), the platform integrations (`integrations/`, Fabric + Foundry/FDP)
   and the ATRS docs (`docs/report.md`, `docs/tool_card.md`, `docs/NHS_PLATFORMS.md`) were all removed
   so the repo is one thing: a de-identification pipeline in a Streamlit app. Recoverable from git
-  history at `09343db` if ever needed.
+  history at `09343db` if ever needed. The LLM assurance pass went the same way (see below).
 - **Demo hosting** — the public demo stays on free Streamlit Cloud. No paid hosting.
 - **Domain cohorts are keyword tagging, NOT validated phenotypes** — `src/cohorts.py` derives domains
   (diabetes/cardiovascular/…) by clinical-concept substring matching because the NHSE set has no
   condition field. High-recall, stated honestly in the UI.
-- **LLM assurance is additive, off-by-default, human-reviewed** — `src/llm_assure.py` runs only when a
-  free key is set, composed via `ComposedDetector` in `detect.py`; its hits are `needs_review=True` and
-  its failures are swallowed so the deterministic path can never break. In the UI this is labelled
-  **"AI double-check"** (owner finds "LLM assurance pass" opaque) and the sidebar shows the actual
-  model + endpoint host (`LLMAssurance().model` / `.base_url`).
+- **No LLM in the loop (removed 2026-09-05)** — the optional "AI double-check" assurance pass
+  (`src/llm_assure.py`, `ComposedDetector`, the `LLM_ASSURE_*` env vars) is gone: the owner did not
+  want the feature. Detection stays deterministic and offline. Don't re-add it without being asked.
 - **Tab 2 has no sample-size controls** — the owner wants the full dataset by default: the whole NHSE
   set is scanned (`load_notes()` cached via `load_all_notes`) and the full matching cohort de-identified.
 
@@ -88,8 +83,8 @@ python -m pytest tests/ -v
   `PII_SPACY_MODEL` env var. `build_detector` only loads a model that's actually **installed**
   (`spacy.util.is_package`) — it never lets Presidio trigger a 560MB runtime download of a missing
   model — and degrades `lg → sm → rules`. The free Streamlit Cloud deploy ships only `sm`.
-- `[app]` extra pulls `pypdf` (PDF ingest) and `requests` (LLM). spaCy/Presidio/streamlit are heavy —
-  the rule layer + pure-Python modules import without them.
+- `[app]` extra pulls `pypdf` (PDF ingest). spaCy/Presidio/streamlit are heavy — the rule layer +
+  pure-Python modules import without them.
 - `requirements.txt` exists **only** for Streamlit Community Cloud (pins the `sm` model wheel); local/
   packaged installs use `pyproject.toml`. Keep the two dep lists roughly in sync.
 

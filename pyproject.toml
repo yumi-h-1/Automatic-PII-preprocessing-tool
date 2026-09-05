@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-app = ["streamlit", "pypdf", "requests"]
+app = ["streamlit", "pypdf"]
 dev = ["pytest", "ruff"]
 
 [tool.setuptools]

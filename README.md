@@ -50,9 +50,9 @@ your text / a domain cohort
         │
         ▼  ingest in memory (txt/csv/pdf → records, no disk)        src/ingest.py · src/cohorts.py
         ▼  fix mojibake                                             src/data.py
-        ▼  detect  =  rules  ∪  Presidio NER                        src/recognisers.py · src/detect.py
-        │            overlap-safe merge; precise rules win
-        ▼  transform  =  redact  |  pseudonymise + DOB date-shift   src/transform.py  (patient-consistent Faker vault)
+        ▼  detect  =  rules  &  Presidio NER                        src/recognisers.py · src/detect.py
+        │         
+        ▼  transform  =  redact  |  pseudonymise + DOB date-shift   src/transform.py
         ▼  review (donut chart + change table)  →  download         streamlit_app.py
 ```
 

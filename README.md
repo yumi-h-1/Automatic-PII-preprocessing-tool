@@ -23,8 +23,7 @@ A short **"How it works"** walkthrough (Add data → Detect & remove → Review 
    health, cancer, renal) and download a **de-identified** cohort from the NHSE synthetic notes. Every
    record passes through the same de-identification gate first.
 
-The UI follows the **NHS.UK** look (NHS Blue header, NHS palette, green action buttons). Detection is
-fully deterministic and runs locally: no external model, no API key, no network call with your text in it.
+Detection is fully deterministic and runs locally.
 
 **Data:** the only dataset the tool ships against is the Hugging Face
 [`NHSEDataScience/synthetic_clinical_notes`](https://huggingface.co/datasets/NHSEDataScience/synthetic_clinical_notes)
@@ -33,7 +32,7 @@ free text you give it.
 
 ## What makes this more than "just Presidio"
 
-Presidio is the detection **engine** — we don't reinvent it. NoteGuard is the clinical layer around it:
+Presidio is the detection engine.
 
 1. **Domain adaptation to messy clinical text.** NHS-aware recognisers: checksum-validated NHS numbers
    **plus** context-anchored detection for the dataset's 9-digit synthetic numbers Presidio's `UK_NHS`

@@ -17,13 +17,10 @@ A short **"How it works"** walkthrough (Add data → Detect & remove → Review 
 1. **De-identify your data** — paste text, or upload a `.txt` / `.csv` / `.pdf` (CSV picks the free-text
    column; multi-row files de-identify as a batch). You see the detected identifiers highlighted, a
    **donut chart** of how many of each type were found, a **table to review every change**, and a
-   one-click download. Files are processed **in memory only** — nothing touches disk (asserted by
-   [tests/test_privacy.py](tests/test_privacy.py)).
+   one-click download. Files are processed **in memory only**.
 2. **Get data by domain** — choose a clinical domain (diabetes, cardiovascular, respiratory, mental
    health, cancer, renal) and download a **de-identified** cohort from the NHSE synthetic notes. Every
    record passes through the same de-identification gate first.
-
-Detection is fully deterministic and runs locally.
 
 **Data:**
 [`NHSEDataScience/synthetic_clinical_notes`](https://huggingface.co/datasets/NHSEDataScience/synthetic_clinical_notes)
@@ -42,8 +39,7 @@ Presidio is the detection engine.
 3. **Pluggable + degrades gracefully.** One `Detector` interface (Rule / Presidio); the pure-Python
    rule layer runs even if spaCy/Presidio are unavailable, and the model auto-resolves
    `lg → sm → rules` to whatever is installed.
-4. **Human-in-the-loop by design.** Low-confidence spans are redacted anyway and flagged `needs_review`,
-   so over-redaction — not leakage — is the failure mode.
+4. **Human-in-the-loop by design.** Low-confidence spans are redacted anyway and flagged `needs_review`.
 5. **Governance wrapper.** A per-note audit of what was removed, mapped to the NHS **Five Safes**,
    **Caldicott Principles** and **DPA 2018 / UK GDPR**.
 

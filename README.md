@@ -10,7 +10,7 @@ source"), so text is cleaned inside its own governance boundary before it is sha
 Bring your own text and get de-identified data back, or pick a clinical domain and download a
 de-identified cohort. Uploaded data is processed **in memory only and never stored**.
 
-## The app — two tabs
+## The app has two tabs
 
 A short **"How it works"** walkthrough (Add data → Detect & remove → Review & download) greets you.
 

@@ -25,10 +25,9 @@ A short **"How it works"** walkthrough (Add data → Detect & remove → Review 
 
 Detection is fully deterministic and runs locally.
 
-**Data:** the only dataset the tool ships against is the Hugging Face
+**Data:**
 [`NHSEDataScience/synthetic_clinical_notes`](https://huggingface.co/datasets/NHSEDataScience/synthetic_clinical_notes)
-set (synthetic — no real patients). Anything else comes in through the upload tab, which accepts any
-free text you give it.
+set in the Hugging Face. Anything else comes in through the upload tab, which accepts any free text you give it.
 
 ## What makes this more than "just Presidio"
 

@@ -56,37 +56,6 @@ your text / a domain cohort
         ▼  review (donut chart + change table)  →  download         streamlit_app.py
 ```
 
-## Measured performance
-
-These numbers are recorded here, in the README, and nowhere else — the tool itself ships no evaluation
-code, no metrics dashboard and no ground-truth join, so the engine can only ever see the note text.
-
-The evaluation was run once, on **2026-08-31**, over all **1,602 notes** of the NHSE synthetic set
-(1,027 known-PII occurrences), with `en_core_web_lg` and redaction. The dataset keeps its PII in
-structured patient/admission tables, so those tables could be joined back to each note as ground truth
-and every known identifier checked against the sanitised output.
-
-| Detector | NHS number F1 | PERSON recall | **Residual leakage** |
-|---|---|---|---|
-| rules only | 0.98 | 0.00 | **74.9 %** |
-| **presidio + rules** (shipping) | **0.98** | **0.69** | **4.7 %** |
-
-**Residual leakage** — known identifiers still visible after sanitisation — is the number that matters
-for a de-identification tool: it is the miss rate, the privacy risk. The rules→engine drop is the
-headline; it shows exactly what the NER engine buys you.
-
-Overall precision in that run was 0.12–0.19, and that figure is a conservative lower bound, not a real
-error rate: the ground truth is the patient tables only, so correctly removing a clinician's name —
-which is *not* in those tables — is scored as a false positive. Most of those "false positives" are real
-identifiers the ground truth simply doesn't list.
-
-> Over-redaction is the safe direction. Precision costs you utility. Recall costs you privacy. Those
-> aren't symmetric.
-
-*The harness that produced this table (`src/evaluate.py`, `tests/run_eval.py`, the published snapshot and
-the ground-truth join) was removed in the "focus the tool on de-identification" change; it is recoverable
-from git history at commit `09343db` if the measurement needs to be repeated.*
-
 ## Project layout
 
 ```

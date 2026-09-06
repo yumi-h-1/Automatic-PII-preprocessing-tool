@@ -1,6 +1,6 @@
 # NoteGuard
 
-**Automatic PII de-identification for NHS clinical notes — clean data in, no identifiers out.**
+**Automatic PII de-identification for NHS clinical notes**
 
 NoteGuard is a clinical-text de-identification pipeline in a Streamlit app. It combines **rule-based
 detection**, **Presidio NER** and **patient-consistent pseudonymisation** so free-text clinical data can

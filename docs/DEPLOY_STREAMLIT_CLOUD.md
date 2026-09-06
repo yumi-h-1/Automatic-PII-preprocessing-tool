@@ -1,4 +1,4 @@
-# Deploy the live demo on Streamlit Community Cloud (free, no card)
+# Deploy the live demo on Streamlit Community Cloud
 
 Streamlit Community Cloud is **fully free with no payment method** — so there is zero risk of a
 surprise bill. It gives a clean `https://<app>.streamlit.app` URL straight from this GitHub repo.

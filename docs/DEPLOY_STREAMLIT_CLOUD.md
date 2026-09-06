@@ -16,12 +16,3 @@ whichever model is actually installed (see `src/detect.py`), so no config is nee
 3. **Main file path:** `streamlit_app.py`  ·  Python 3.10–3.12.
 4. Click **Deploy**. First build installs Presidio + spaCy + `sm` (~2–4 min), then serves the app.
 
-No secrets are required: detection is deterministic and local, so the app makes no external model calls.
-
-## Notes
-- **Want full 100% name recall?** Set `PII_SPACY_MODEL = "en_core_web_lg"` in **Settings → Secrets**
-  (`streamlit_app.py` bridges it into the environment via `_bridge_secrets_to_env`) **and** swap the
-  model wheel in `requirements.txt` to the `lg` wheel — but `lg` (~560 MB) may exceed the free tier's
-  RAM, so test it. The `sm` default is the safe choice for the free tier.
-- The dataset (NHSE synthetic notes) is pulled from Hugging Face on first use; if that fails the app
-  still runs in paste/upload mode.
